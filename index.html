@@ -15,7 +15,7 @@
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
 
         /* 側邊選單 */
-        #sidebar { width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; border-right: 1px solid #444; z-index: 100; overflow-y: auto; }
+        #sidebar { width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; border-right: 1px solid #444; z-index: 100; }
         #sidebar.collapsed { width: 0; border: none; }
         .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
         .menu-category { font-size: 0.8rem; color: #9aa0a6; margin: 20px 0 10px 10px; text-transform: uppercase; }
@@ -41,10 +41,11 @@
         .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
         .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; transition: 0.1s; color: #776e65; }
         .n2 { background: #eee4da; } .n4 { background: #ede0c8; } .n8 { background: #f2b179; color: white; }
+        .n16 { background: #f59563; color: white; } .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; } .n128 { background: #edcf72; color: white; }
 
         /* 貪食蛇樣式 */
         #game-snake { display: none; flex-direction: column; align-items: center; }
-        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -74,13 +75,11 @@
     </header>
 
     <div id="game-display">
-        <h3 id="welcome-msg">請點擊選單開始遊戲</h3>
-        
+        <h3 id="welcome-msg">← 點擊選單開始遊戲</h3>
         <div id="game-2048"><div id="grid-base"></div></div>
-        
         <div id="game-snake">
             <canvas id="snakeCanvas" width="400" height="400"></canvas>
-            <p style="color: #888; margin-top: 10px;">使用 WASD 或方向鍵控制移動</p>
+            <p style="color: #888; margin-top: 10px;">WASD 或 方向鍵控制</p>
         </div>
     </div>
 </div>
@@ -90,32 +89,27 @@
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
     function switchGame(game) {
-        // 清除初始畫面
         document.getElementById('welcome-msg').style.display = 'none';
         document.getElementById('game-2048').style.display = 'none';
         document.getElementById('game-snake').style.display = 'none';
-        
-        // 切換按鈕狀態
         document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
         document.getElementById('btn-' + game).classList.add('active');
-
-        // 停止之前的遊戲循環
         if(window.snakeInterval) clearInterval(window.snakeInterval);
 
         if(game === '2048') {
             currentGame = "2048";
-            document.getElementById('current-title').innerText = "2048 益智";
+            document.getElementById('current-title').innerText = "2048";
             document.getElementById('game-2048').style.display = 'block';
             init2048();
         } else if(game === 'snake') {
             currentGame = "snake";
-            document.getElementById('current-title').innerText = "經典貪食蛇";
+            document.getElementById('current-title').innerText = "貪食蛇";
             document.getElementById('game-snake').style.display = 'flex';
             initSnake();
         }
     }
 
-    // ================= 2048 邏輯 =================
+    // ================= 2048 核心邏輯 =================
     let b2048 = [];
     let s2048 = 0;
     function init2048() {
@@ -146,81 +140,76 @@
         });
         document.getElementById('score').innerText = s2048;
         let best = localStorage.getItem('2048_best') || 0;
-        if(s2048 > best) { localStorage.setItem('2048_best', s2048); document.getElementById('best').innerText = s2048; }
+        if(s2048 > parseInt(best)) { localStorage.setItem('2048_best', s2048); document.getElementById('best').innerText = s2048; }
+    }
+    function move2048(direction) {
+        let oldBoard = [...b2048];
+        for (let i = 0; i < 4; i++) {
+            let row = [], indices = [];
+            for (let j = 0; j < 4; j++) {
+                let idx;
+                if (direction === 'left') idx = i * 4 + j;
+                else if (direction === 'right') idx = i * 4 + (3 - j);
+                else if (direction === 'up') idx = j * 4 + i;
+                else if (direction === 'down') idx = (3 - j) * 4 + i;
+                indices.push(idx); row.push(b2048[idx]);
+            }
+            let newRow = slideRow(row);
+            indices.forEach((idx, j) => b2048[idx] = newRow[j]);
+        }
+        if (JSON.stringify(oldBoard) !== JSON.stringify(b2048)) { spawn2048(); }
+    }
+    function slideRow(row) {
+        let arr = row.filter(v => v !== 0);
+        for (let i = 0; i < arr.length - 1; i++) {
+            if (arr[i] === arr[i+1]) { arr[i] *= 2; s2048 += arr[i]; arr.splice(i+1, 1); }
+        }
+        while (arr.length < 4) arr.push(0); return arr;
     }
 
-    // ================= 貪食蛇邏輯 =================
-    let canvas, ctx;
-    let snake, food, dx, dy, snakeScore;
+    // ================= 貪食蛇核心邏輯 =================
+    let canvas, ctx, snake, food, dx, dy, sSnake;
     function initSnake() {
         canvas = document.getElementById('snakeCanvas');
         ctx = canvas.getContext('2d');
-        snake = [{x: 200, y: 200}, {x: 190, y: 200}, {x: 180, y: 200}];
-        dx = 10; dy = 0; snakeScore = 0;
+        snake = [{x: 200, y: 200}, {x: 190, y: 200}];
+        dx = 10; dy = 0; sSnake = 0;
         document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
+        document.getElementById('score').innerText = 0;
         createFood();
-        if(window.snakeInterval) clearInterval(window.snakeInterval);
-        window.snakeInterval = setInterval(mainSnake, 100);
+        window.snakeInterval = setInterval(drawSnakeGame, 100);
     }
-    function mainSnake() {
-        if (checkSnakeGameOver()) {
-            clearInterval(window.snakeInterval);
-            alert("遊戲結束！ 分數: " + snakeScore);
-            initSnake();
-            return;
-        }
-        clearCanvas();
-        drawFood();
-        advanceSnake();
-        drawSnake();
-    }
-    function clearCanvas() { ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-    function drawSnake() { 
-        ctx.fillStyle = "#8ab4f8"; 
-        snake.forEach(part => ctx.fillRect(part.x, part.y, 10, 10)); 
-    }
-    function advanceSnake() {
+    function drawSnakeGame() {
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
+            clearInterval(window.snakeInterval); alert("遊戲結束！"); initSnake(); return;
+        }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) {
-            snakeScore += 10;
-            document.getElementById('score').innerText = snakeScore;
+            sSnake += 1; // 這裡改成 1 分了
+            document.getElementById('score').innerText = sSnake;
             let best = localStorage.getItem('snake_best') || 0;
-            if(snakeScore > best) { localStorage.setItem('snake_best', snakeScore); document.getElementById('best').innerText = snakeScore; }
+            if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
             createFood();
-        } else {
-            snake.pop();
-        }
-    }
-    function checkSnakeGameOver() {
-        const hitLeft = snake[0].x < 0;
-        const hitRight = snake[0].x > canvas.width - 10;
-        const hitTop = snake[0].y < 0;
-        const hitBottom = snake[0].y > canvas.height - 10;
-        let selfHit = false;
-        for(let i=4; i<snake.length; i++) if(snake[i].x === snake[0].x && snake[i].y === snake[0].y) selfHit = true;
-        return hitLeft || hitRight || hitTop || hitBottom || selfHit;
+        } else { snake.pop(); }
+        ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
+        ctx.fillStyle = "#ff5252"; ctx.fillRect(food.x, food.y, 10, 10);
+        ctx.fillStyle = "#8ab4f8"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10));
     }
     function createFood() {
-        food = {
-            x: Math.round((Math.random() * (canvas.width-10)) / 10) * 10,
-            y: Math.round((Math.random() * (canvas.height-10)) / 10) * 10
-        };
+        food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 };
     }
-    function drawFood() { ctx.fillStyle = "#ff5252"; ctx.fillRect(food.x, food.y, 10, 10); }
 
-    // ================= 按鍵統一監聽 =================
+    // ================= 按鍵監聽 =================
     window.addEventListener('keydown', e => {
         if(currentGame === "2048") {
             const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down'};
-            if(m[e.code]) { e.preventDefault(); /* 這裡對應原本 2048 的移動函數，因空間限制略寫，請保留上一版本 move 邏輯 */ }
-        }
-        if(currentGame === "snake") {
-            const keyPressed = e.code;
-            if (keyPressed === 'ArrowUp' || keyPressed === 'KeyW') { if(dy === 0) {dx=0; dy=-10;} }
-            if (keyPressed === 'ArrowDown' || keyPressed === 'KeyS') { if(dy === 0) {dx=0; dy=10;} }
-            if (keyPressed === 'ArrowLeft' || keyPressed === 'KeyA') { if(dx === 0) {dx=-10; dy=0;} }
-            if (keyPressed === 'ArrowRight' || keyPressed === 'KeyD') { if(dx === 0) {dx=10; dy=0;} }
+            if(m[e.code]) { e.preventDefault(); move2048(m[e.code]); }
+        } else if(currentGame === "snake") {
+            if(e.code==='ArrowUp'||e.code==='KeyW'){ if(dy===0){dx=0;dy=-10;} }
+            else if(e.code==='ArrowDown'||e.code==='KeyS'){ if(dy===0){dx=0;dy=10;} }
+            else if(e.code==='ArrowLeft'||e.code==='KeyA'){ if(dx===0){dx=-10;dy=0;} }
+            else if(e.code==='ArrowRight'||e.code==='KeyD'){ if(dx===0){dx=10;dy=0;} }
         }
     });
 </script>

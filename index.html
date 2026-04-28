@@ -5,16 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的遊戲平台</title>
     <style>
-        :root { 
-            --sidebar-width: 260px; 
-            --dark-bg: #1e1f20; 
-            --item-hover: #333537;
-            --accent: #8ab4f8;
-            --light-text: #e3e3e3;
-        }
+        /* 原有的樣式保留 ... */
+        :root { --sidebar-width: 260px; --dark-bg: #1e1f20; --item-hover: #333537; --accent: #8ab4f8; --light-text: #e3e3e3; }
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
-
-        /* 側邊選單 */
         #sidebar { width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; border-right: 1px solid #444; z-index: 100; }
         #sidebar.collapsed { width: 0; border: none; }
         .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
@@ -22,18 +15,13 @@
         .menu-item { padding: 12px 15px; margin: 4px 0; border-radius: 25px; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .menu-item:hover { background: var(--item-hover); }
         .menu-item.active { background: #394457; color: var(--accent); }
-
-        /* 主內容區 */
         #main { flex-grow: 1; display: flex; flex-direction: column; }
         #header { background: #131314; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .nav-left { display: flex; align-items: center; gap: 15px; }
         #menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; }
         #menu-toggle:hover { background: var(--item-hover); }
-
         .score-box { display: flex; gap: 10px; }
         .score-item { font-size: 0.9rem; background: #282a2d; padding: 8px 15px; border-radius: 10px; border: 1px solid #444; }
-
-        /* 遊戲容器 */
         #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
         
         /* 2048 樣式 */
@@ -46,9 +34,33 @@
         /* 貪食蛇樣式 */
         #game-snake { display: none; flex-direction: column; align-items: center; }
         canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; }
+
+        /* ✨ 新增：自定義彈窗樣式 (Modal) */
+        #custom-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #2c2c2c; padding: 30px; border-radius: 15px; text-align: center;
+            border: 1px solid var(--accent); box-shadow: 0 0 20px rgba(138, 180, 248, 0.3);
+        }
+        .modal-content h2 { margin-top: 0; color: var(--accent); }
+        .modal-btn {
+            background: var(--accent); color: #000; border: none; padding: 10px 25px;
+            border-radius: 20px; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
+        .modal-btn:hover { background: #aecbfa; }
     </style>
 </head>
 <body>
+
+<div id="custom-modal">
+    <div class="modal-content">
+        <h2 id="modal-title">遊戲結束</h2>
+        <p id="modal-msg">分數：0</p>
+        <button class="modal-btn" onclick="closeModal()">確定</button>
+    </div>
+</div>
 
 <nav id="sidebar">
     <div class="sidebar-content">
@@ -58,7 +70,7 @@
         <div class="menu-category">經典動作</div>
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
         <div class="menu-category">資料管理</div>
-        <div class="menu-item" onclick="localStorage.clear(); location.reload();"><span>🗑️</span> 清除所有紀錄</div>
+        <div class="menu-item" onclick="if(confirm('確定清除紀錄？')) {localStorage.clear(); location.reload();}"><span>🗑️</span> 清除紀錄</div>
     </div>
 </nav>
 
@@ -88,6 +100,18 @@
     let currentGame = "";
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
+    // ✨ 彈窗控制
+    function openModal(title, msg) {
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-msg').innerText = msg;
+        document.getElementById('custom-modal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('custom-modal').style.display = 'none';
+        if(currentGame === 'snake') initSnake();
+        if(currentGame === '2048') init2048();
+    }
+
     function switchGame(game) {
         document.getElementById('welcome-msg').style.display = 'none';
         document.getElementById('game-2048').style.display = 'none';
@@ -109,9 +133,8 @@
         }
     }
 
-    // ================= 2048 核心邏輯 =================
-    let b2048 = [];
-    let s2048 = 0;
+    // ================= 2048 邏輯 (保持原樣) =================
+    let b2048 = []; let s2048 = 0;
     function init2048() {
         b2048 = Array(16).fill(0); s2048 = 0;
         document.getElementById('best').innerText = localStorage.getItem('2048_best') || 0;
@@ -167,7 +190,7 @@
         while (arr.length < 4) arr.push(0); return arr;
     }
 
-    // ================= 貪食蛇核心邏輯 =================
+    // ================= 貪食蛇邏輯 (修正彈窗) =================
     let canvas, ctx, snake, food, dx, dy, sSnake;
     function initSnake() {
         canvas = document.getElementById('snakeCanvas');
@@ -177,16 +200,20 @@
         document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
         document.getElementById('score').innerText = 0;
         createFood();
+        if(window.snakeInterval) clearInterval(window.snakeInterval);
         window.snakeInterval = setInterval(drawSnakeGame, 100);
     }
     function drawSnakeGame() {
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        // 死亡檢測
         if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
-            clearInterval(window.snakeInterval); alert("遊戲結束！"); initSnake(); return;
+            clearInterval(window.snakeInterval);
+            openModal("遊戲結束", "您的分數是：" + sSnake); // ✨ 使用自定義彈窗
+            return;
         }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) {
-            sSnake += 1; // 這裡改成 1 分了
+            sSnake += 1; // 每次得分 1 分
             document.getElementById('score').innerText = sSnake;
             let best = localStorage.getItem('snake_best') || 0;
             if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
@@ -196,11 +223,8 @@
         ctx.fillStyle = "#ff5252"; ctx.fillRect(food.x, food.y, 10, 10);
         ctx.fillStyle = "#8ab4f8"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10));
     }
-    function createFood() {
-        food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 };
-    }
+    function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
 
-    // ================= 按鍵監聽 =================
     window.addEventListener('keydown', e => {
         if(currentGame === "2048") {
             const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down'};

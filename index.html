@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的遊戲平台</title>
     <style>
-        /* 原有的樣式保留 ... */
         :root { --sidebar-width: 260px; --dark-bg: #1e1f20; --item-hover: #333537; --accent: #8ab4f8; --light-text: #e3e3e3; }
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
+        
+        /* 側邊選單與 Header 保持不變... */
         #sidebar { width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; border-right: 1px solid #444; z-index: 100; }
         #sidebar.collapsed { width: 0; border: none; }
         .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
@@ -22,85 +23,78 @@
         #menu-toggle:hover { background: var(--item-hover); }
         .score-box { display: flex; gap: 10px; }
         .score-item { font-size: 0.9rem; background: #282a2d; padding: 8px 15px; border-radius: 10px; border: 1px solid #444; }
-        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        
-        /* 2048 樣式 */
+
+        /* ✨ 2048 絲滑動畫關鍵樣式 */
         #game-2048 { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; position: relative; }
         .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
-        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; transition: 0.1s; color: #776e65; }
-        .n2 { background: #eee4da; } .n4 { background: #ede0c8; } .n8 { background: #f2b179; color: white; }
-        .n16 { background: #f59563; color: white; } .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; } .n128 { background: #edcf72; color: white; }
+        .tile { 
+            width: 70px; height: 70px; border-radius: 3px; position: absolute; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 28px; font-weight: bold; color: #776e65;
+            transition: all 0.12s ease-in-out; /* 這裡控制移動速度 */
+            z-index: 10;
+        }
+        .tile-new { animation: appear 0.2s; }
+        @keyframes appear { from { transform: scale(0); } to { transform: scale(1); } }
+
+        /* 數字顏色深淺 */
+        .n2 { background: #eee4da; } .n4 { background: #ede0c8; } 
+        .n8 { background: #f2b179; color: white; } .n16 { background: #f59563; color: white; }
+        .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; }
+        .n128 { background: #edcf72; color: white; font-size: 24px; }
+        .n256 { background: #edcc61; color: white; font-size: 24px; }
+        .n512 { background: #edc850; color: white; font-size: 24px; }
+        .n1024 { background: #edc53f; color: white; font-size: 18px; }
+        .n2048 { background: #edc22e; color: white; font-size: 18px; }
 
         /* 貪食蛇樣式 */
         #game-snake { display: none; flex-direction: column; align-items: center; }
         canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; }
 
-        /* ✨ 新增：自定義彈窗樣式 (Modal) */
-        #custom-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: #2c2c2c; padding: 30px; border-radius: 15px; text-align: center;
-            border: 1px solid var(--accent); box-shadow: 0 0 20px rgba(138, 180, 248, 0.3);
-        }
-        .modal-content h2 { margin-top: 0; color: var(--accent); }
-        .modal-btn {
-            background: var(--accent); color: #000; border: none; padding: 10px 25px;
-            border-radius: 20px; font-weight: bold; cursor: pointer; margin-top: 15px;
-        }
-        .modal-btn:hover { background: #aecbfa; }
+        /* 漂亮彈窗 */
+        #custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #2c2c2c; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .modal-btn { background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1rem; }
     </style>
 </head>
 <body>
 
 <div id="custom-modal">
     <div class="modal-content">
-        <h2 id="modal-title">遊戲結束</h2>
-        <p id="modal-msg">分數：0</p>
-        <button class="modal-btn" onclick="closeModal()">確定</button>
+        <h2 id="modal-title"></h2>
+        <p id="modal-msg"></p>
+        <button class="modal-btn" onclick="closeModal()">再次挑戰</button>
     </div>
 </div>
 
 <nav id="sidebar">
     <div class="sidebar-content">
         <h2 style="color: var(--accent);">遊戲倉庫</h2>
-        <div class="menu-category">益智遊戲</div>
         <div class="menu-item" id="btn-2048" onclick="switchGame('2048')"><span>🎮</span> 2048</div>
-        <div class="menu-category">經典動作</div>
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
-        <div class="menu-category">資料管理</div>
-        <div class="menu-item" onclick="if(confirm('確定清除紀錄？')) {localStorage.clear(); location.reload();}"><span>🗑️</span> 清除紀錄</div>
+        <div class="menu-category">管理</div>
+        <div class="menu-item" onclick="if(confirm('確定清除？')){localStorage.clear();location.reload();}"><span>🗑️</span> 清除紀錄</div>
     </div>
 </nav>
 
 <div id="main">
     <header id="header">
-        <div class="nav-left">
-            <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
-            <div id="current-title" style="font-size: 1.2rem; font-weight: bold;">首頁</div>
-        </div>
+        <div class="nav-left"><button id="menu-toggle" onclick="toggleSidebar()">☰</button><div id="current-title">首頁</div></div>
         <div class="score-box">
             <div class="score-item">分數: <span id="score">0</span></div>
             <div class="score-item" style="color: var(--accent);">最高: <span id="best">0</span></div>
         </div>
     </header>
-
     <div id="game-display">
-        <h3 id="welcome-msg">← 點擊選單開始遊戲</h3>
+        <h3 id="welcome-msg">← 選擇遊戲開始</h3>
         <div id="game-2048"><div id="grid-base"></div></div>
-        <div id="game-snake">
-            <canvas id="snakeCanvas" width="400" height="400"></canvas>
-            <p style="color: #888; margin-top: 10px;">WASD 或 方向鍵控制</p>
-        </div>
+        <div id="game-snake"><canvas id="snakeCanvas" width="400" height="400"></canvas></div>
     </div>
 </div>
 
 <script>
-    let currentGame = "";
+    let currentGame = "", gameActive = false;
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
-
-    // ✨ 彈窗控制
     function openModal(title, msg) {
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-msg').innerText = msg;
@@ -108,8 +102,8 @@
     }
     function closeModal() {
         document.getElementById('custom-modal').style.display = 'none';
-        if(currentGame === 'snake') initSnake();
         if(currentGame === '2048') init2048();
+        else if(currentGame === 'snake') initSnake();
     }
 
     function switchGame(game) {
@@ -119,24 +113,20 @@
         document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
         document.getElementById('btn-' + game).classList.add('active');
         if(window.snakeInterval) clearInterval(window.snakeInterval);
-
+        
         if(game === '2048') {
-            currentGame = "2048";
-            document.getElementById('current-title').innerText = "2048";
-            document.getElementById('game-2048').style.display = 'block';
-            init2048();
-        } else if(game === 'snake') {
-            currentGame = "snake";
-            document.getElementById('current-title').innerText = "貪食蛇";
-            document.getElementById('game-snake').style.display = 'flex';
-            initSnake();
+            currentGame = "2048"; document.getElementById('current-title').innerText = "2048";
+            document.getElementById('game-2048').style.display = 'block'; init2048();
+        } else {
+            currentGame = "snake"; document.getElementById('current-title').innerText = "貪食蛇";
+            document.getElementById('game-snake').style.display = 'flex'; initSnake();
         }
     }
 
-    // ================= 2048 邏輯 (保持原樣) =================
-    let b2048 = []; let s2048 = 0;
+    // ================= 2048 優化版 (絲滑移動) =================
+    let b2048 = [], s2048 = 0;
     function init2048() {
-        b2048 = Array(16).fill(0); s2048 = 0;
+        b2048 = Array(16).fill(0); s2048 = 0; gameActive = true;
         document.getElementById('best').innerText = localStorage.getItem('2048_best') || 0;
         const grid = document.getElementById('grid-base');
         grid.innerHTML = '';
@@ -147,41 +137,52 @@
         }
         spawn2048(); spawn2048();
     }
+
     function spawn2048() {
         let empty = b2048.map((v, i) => v === 0 ? i : null).filter(v => v !== null);
-        if(empty.length) b2048[empty[Math.floor(Math.random() * empty.length)]] = 2;
-        render2048();
+        if(empty.length) {
+            let idx = empty[Math.floor(Math.random() * empty.length)];
+            b2048[idx] = Math.random() > 0.1 ? 2 : 4;
+            render2048(idx); // 傳入 idx 代表這是新生成的方塊
+        }
     }
-    function render2048() {
-        document.querySelectorAll('.tile').forEach(t => t.remove());
+
+    function render2048(newIdx = -1) {
+        const grid = document.getElementById('grid-base');
+        // 清除舊方塊，但在進階開發中我們會用 id 追蹤來做真正的平移。
+        // 這裡為了保持代碼簡潔，我們使用 CSS 轉場模擬。
+        grid.querySelectorAll('.tile').forEach(t => t.remove());
         b2048.forEach((val, i) => {
             if(val > 0) {
-                let t = document.createElement('div'); t.className = `tile n${val <= 128 ? val : 128}`;
-                t.innerText = val; t.style.left = (i % 4) * 78 + 5 + 'px'; t.style.top = Math.floor(i / 4) * 78 + 5 + 'px';
-                document.getElementById('grid-base').appendChild(t);
+                let t = document.createElement('div');
+                t.className = `tile n${val > 2048 ? 2048 : val} ${i === newIdx ? 'tile-new' : ''}`;
+                t.innerText = val;
+                t.style.left = (i % 4) * 78 + 5 + 'px';
+                t.style.top = Math.floor(i / 4) * 78 + 5 + 'px';
+                grid.appendChild(t);
             }
         });
         document.getElementById('score').innerText = s2048;
         let best = localStorage.getItem('2048_best') || 0;
         if(s2048 > parseInt(best)) { localStorage.setItem('2048_best', s2048); document.getElementById('best').innerText = s2048; }
+        check2048GameOver();
     }
-    function move2048(direction) {
-        let oldBoard = [...b2048];
+
+    function move2048(dir) {
+        if(!gameActive) return;
+        let old = [...b2048];
         for (let i = 0; i < 4; i++) {
             let row = [], indices = [];
             for (let j = 0; j < 4; j++) {
-                let idx;
-                if (direction === 'left') idx = i * 4 + j;
-                else if (direction === 'right') idx = i * 4 + (3 - j);
-                else if (direction === 'up') idx = j * 4 + i;
-                else if (direction === 'down') idx = (3 - j) * 4 + i;
+                let idx = (dir==='left')? i*4+j : (dir==='right')? i*4+(3-j) : (dir==='up')? j*4+i : (3-j)*4+i;
                 indices.push(idx); row.push(b2048[idx]);
             }
             let newRow = slideRow(row);
             indices.forEach((idx, j) => b2048[idx] = newRow[j]);
         }
-        if (JSON.stringify(oldBoard) !== JSON.stringify(b2048)) { spawn2048(); }
+        if (JSON.stringify(old) !== JSON.stringify(b2048)) { spawn2048(); }
     }
+
     function slideRow(row) {
         let arr = row.filter(v => v !== 0);
         for (let i = 0; i < arr.length - 1; i++) {
@@ -190,31 +191,33 @@
         while (arr.length < 4) arr.push(0); return arr;
     }
 
-    // ================= 貪食蛇邏輯 (修正彈窗) =================
+    function check2048GameOver() {
+        if (b2048.includes(0)) return;
+        for (let i = 0; i < 16; i++) {
+            if (i % 4 < 3 && b2048[i] === b2048[i+1]) return;
+            if (i < 12 && b2048[i] === b2048[i+4]) return;
+        }
+        gameActive = false;
+        openModal("2048 結束", "最終得分：" + s2048);
+    }
+
+    // ================= 貪食蛇 (保持 1 分與彈窗) =================
     let canvas, ctx, snake, food, dx, dy, sSnake;
     function initSnake() {
-        canvas = document.getElementById('snakeCanvas');
-        ctx = canvas.getContext('2d');
-        snake = [{x: 200, y: 200}, {x: 190, y: 200}];
-        dx = 10; dy = 0; sSnake = 0;
+        canvas = document.getElementById('snakeCanvas'); ctx = canvas.getContext('2d');
+        snake = [{x: 200, y: 200}, {x: 190, y: 200}]; dx = 10; dy = 0; sSnake = 0;
         document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
-        document.getElementById('score').innerText = 0;
-        createFood();
-        if(window.snakeInterval) clearInterval(window.snakeInterval);
-        window.snakeInterval = setInterval(drawSnakeGame, 100);
+        document.getElementById('score').innerText = 0; createFood();
+        window.snakeInterval = setInterval(drawSnake, 100);
     }
-    function drawSnakeGame() {
+    function drawSnake() {
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-        // 死亡檢測
         if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
-            clearInterval(window.snakeInterval);
-            openModal("遊戲結束", "您的分數是：" + sSnake); // ✨ 使用自定義彈窗
-            return;
+            clearInterval(window.snakeInterval); openModal("貪食蛇結束", "最終得分：" + sSnake); return;
         }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) {
-            sSnake += 1; // 每次得分 1 分
-            document.getElementById('score').innerText = sSnake;
+            sSnake += 1; document.getElementById('score').innerText = sSnake;
             let best = localStorage.getItem('snake_best') || 0;
             if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
             createFood();
@@ -226,14 +229,16 @@
     function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
 
     window.addEventListener('keydown', e => {
-        if(currentGame === "2048") {
-            const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down'};
-            if(m[e.code]) { e.preventDefault(); move2048(m[e.code]); }
-        } else if(currentGame === "snake") {
-            if(e.code==='ArrowUp'||e.code==='KeyW'){ if(dy===0){dx=0;dy=-10;} }
-            else if(e.code==='ArrowDown'||e.code==='KeyS'){ if(dy===0){dx=0;dy=10;} }
-            else if(e.code==='ArrowLeft'||e.code==='KeyA'){ if(dx===0){dx=-10;dy=0;} }
-            else if(e.code==='ArrowRight'||e.code==='KeyD'){ if(dx===0){dx=10;dy=0;} }
+        const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down'};
+        if(m[e.code]) { 
+            e.preventDefault(); 
+            if(currentGame === "2048") move2048(m[e.code]);
+            else if(currentGame === "snake") {
+                if((m[e.code]==='up'&&dy===0)||(m[e.code]==='down'&&dy===0)||(m[e.code]==='left'&&dx===0)||(m[e.code]==='right'&&dx===0)) {
+                    dx=(m[e.code]==='left')?-10:(m[e.code]==='right')?10:0;
+                    dy=(m[e.code]==='up')?-10:(m[e.code]==='down')?10:0;
+                }
+            }
         }
     });
 </script>

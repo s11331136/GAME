@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的網頁遊戲平台</title>
+    <style>
+        :root { --dark-bg: #2c3e50; --light-bg: #ecf0f1; --accent: #3498db; }
+        body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--light-bg); overflow: hidden; }
+
+        /* 側邊選單 */
+        #sidebar { width: 200px; background: var(--dark-bg); color: white; display: flex; flex-direction: column; padding: 20px; }
+        .menu-item { padding: 15px; margin: 5px 0; background: #34495e; border-radius: 8px; cursor: pointer; transition: 0.3s; text-align: center; }
+        .menu-item:hover { background: var(--accent); }
+
+        /* 右側內容區 */
+        #main { flex-grow: 1; display: flex; flex-direction: column; }
+        #header { background: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #score-container { font-size: 1.2rem; font-weight: bold; color: #776e65; background: #eee4da; padding: 5px 15px; border-radius: 5px; }
+
+        /* 遊戲畫面 */
+        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        #game-2048-container { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; position: relative; }
+        .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
+        .tile { 
+            width: 70px; height: 70px; border-radius: 3px; position: absolute; 
+            display: flex; justify-content: center; align-items: center;
+            font-size: 28px; font-weight: bold; transition: all 0.1s ease; 
+            animation: appear 0.2s;
+        }
+        @keyframes appear { from { transform: scale(0); } to { transform: scale(1); } }
+        
+        /* 數字顏色 */
+        .n2 { background: #eee4da; color: #776e65; }
+        .n4 { background: #ede0c8; color: #776e65; }
+        .n8 { background: #f2b179; color: white; }
+        .n16 { background: #f59563; color: white; }
+        .n32 { background: #f67c5f; color: white; }
+        .n64 { background: #f65e3b; color: white; }
+        .n128 { background: #edcf72; color: white; font-size: 22px; }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar">
+    <h2>遊戲大廳</h2>
+    <div class="menu-item" onclick="showGame('2048')">🎮 2048</div>
+    <div class="menu-item" onclick="alert('開發中...')">🧩 更多遊戲</div>
+</nav>
+
+<div id="main">
+    <header id="header">
+        <div style="font-weight: bold;">目前遊戲：<span id="current-game-name">首頁</span></div>
+        <div id="score-container">分數: <span id="score">0</span></div>
+    </header>
+
+    <div id="game-display">
+        <div id="welcome-msg"><h3>歡迎回來！請選擇遊戲開始挑戰。</h3></div>
+        <div id="game-2048-container"><div id="grid-base"></div></div>
+    </div>
+</div>
+
+<script>
+    let board = [];
+    let score = 0;
+    let gameActive = false;
+
+    function showGame(game) {
+        document.getElementById('welcome-msg').style.display = 'none';
+        document.getElementById('game-2048-container').style.display = 'none';
+        
+        if(game === '2048') {
+            document.getElementById('current-game-name').innerText = "2048";
+            document.getElementById('game-2048-container').style.display = 'block';
+            init2048();
+        }
+    }
+
+    function init2048() {
+        board = Array(16).fill(0);
+        score = 0;
+        updateScore();
+        const grid = document.getElementById('grid-base');
+        grid.innerHTML = '';
+        for (let i = 0; i < 16; i++) {
+            let c = document.createElement('div');
+            c.className = 'cell';
+            c.style.left = (i % 4) * 78 + 5 + 'px';
+            c.style.top = Math.floor(i / 4) * 78 + 5 + 'px';
+            grid.appendChild(c);
+        }
+        spawn(); spawn();
+        gameActive = true;
+    }
+
+    function spawn() {
+        let empty = board.map((v, i) => v === 0 ? i : null).filter(v => v !== null);
+        if(empty.length) board[empty[Math.floor(Math.random() * empty.length)]] = Math.random() > 0.1 ? 2 : 4;
+        render();
+    }
+
+    function render() {
+        document.querySelectorAll('.tile').forEach(t => t.remove());
+        board.forEach((val, i) => {
+            if(val > 0) {
+                let t = document.createElement('div');
+                t.className = `tile n${val <= 128 ? val : 128}`;
+                t.innerText = val;
+                t.style.left = (i % 4) * 78 + 5 + 'px';
+                t.style.top = Math.floor(i / 4) * 78 + 5 + 'px';
+                document.getElementById('grid-base').appendChild(t);
+            }
+        });
+    }
+
+    function updateScore() { document.getElementById('score').innerText = score; }
+
+    // 核心邏輯：移動與合併
+    function slide(row) {
+        let arr = row.filter(v => v !== 0);
+        for (let i = 0; i < arr.length - 1; i++) {
+            if (arr[i] === arr[i+1]) {
+                arr[i] *= 2; score += arr[i];
+                arr.splice(i+1, 1);
+            }
+        }
+        while (arr.length < 4) arr.push(0);
+        return arr;
+    }
+
+    function move(direction) {
+        if(!gameActive) return;
+        let oldBoard = [...board];
+        for (let i = 0; i < 4; i++) {
+            let row = [], indices = [];
+            for (let j = 0; j < 4; j++) {
+                let idx;
+                if (direction === 'left') idx = i * 4 + j;
+                else if (direction === 'right') idx = i * 4 + (3 - j);
+                else if (direction === 'up') idx = j * 4 + i;
+                else if (direction === 'down') idx = (3 - j) * 4 + i;
+                indices.push(idx);
+                row.push(board[idx]);
+            }
+            let newRow = slide(row);
+            indices.forEach((idx, j) => board[idx] = newRow[j]);
+        }
+        if (JSON.stringify(oldBoard) !== JSON.stringify(board)) {
+            spawn(); updateScore();
+        }
+    }
+
+    // 監聽按鍵 (WASD + 方向鍵)
+    window.addEventListener('keydown', e => {
+        const keyMap = {
+            'ArrowLeft': 'left', 'KeyA': 'left',
+            'ArrowRight': 'right', 'KeyD': 'right',
+            'ArrowUp': 'up', 'KeyW': 'up',
+            'ArrowDown': 'down', 'KeyS': 'down'
+        };
+        if (keyMap[e.code]) {
+            e.preventDefault(); // 防止網頁捲動
+            move(keyMap[e.code]);
+        }
+    });
+</script>
+</body>
+</html>

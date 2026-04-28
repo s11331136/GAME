@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>網頁遊戲平台</title>
+    <title>我的網頁遊戲平台</title>
     <style>
         :root { --dark-bg: #2c3e50; --light-bg: #ecf0f1; --accent: #3498db; }
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--light-bg); overflow: hidden; }
@@ -16,7 +16,10 @@
         /* 右側內容區 */
         #main { flex-grow: 1; display: flex; flex-direction: column; }
         #header { background: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #score-container { font-size: 1.2rem; font-weight: bold; color: #776e65; background: #eee4da; padding: 5px 15px; border-radius: 5px; }
+        
+        .score-box { display: flex; gap: 10px; }
+        .score-item { font-size: 1rem; font-weight: bold; color: #776e65; background: #eee4da; padding: 5px 12px; border-radius: 5px; }
+        .best-item { background: #edcf72; color: white; }
 
         /* 遊戲畫面 */
         #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -30,14 +33,13 @@
         }
         @keyframes appear { from { transform: scale(0); } to { transform: scale(1); } }
         
-        /* 數字顏色 */
         .n2 { background: #eee4da; color: #776e65; }
         .n4 { background: #ede0c8; color: #776e65; }
         .n8 { background: #f2b179; color: white; }
         .n16 { background: #f59563; color: white; }
         .n32 { background: #f67c5f; color: white; }
         .n64 { background: #f65e3b; color: white; }
-        .n128 { background: #edcf72; color: white; font-size: 22px; }
+        .n128 { background: #edcf72; color: white; }
     </style>
 </head>
 <body>
@@ -51,11 +53,14 @@
 <div id="main">
     <header id="header">
         <div style="font-weight: bold;">目前遊戲：<span id="current-game-name">首頁</span></div>
-        <div id="score-container">分數: <span id="score">0</span></div>
+        <div class="score-box">
+            <div class="score-item">分數: <span id="score">0</span></div>
+            <div class="score-item best-item">最高紀錄: <span id="best-score">0</span></div>
+        </div>
     </header>
 
     <div id="game-display">
-        <div id="welcome-msg"><h3>歡迎回來！請選擇遊戲開始挑戰。</h3></div>
+        <div id="welcome-msg"><h3>歡迎回來！您的數據已自動保存。</h3></div>
         <div id="game-2048-container"><div id="grid-base"></div></div>
     </div>
 </div>
@@ -63,7 +68,11 @@
 <script>
     let board = [];
     let score = 0;
+    let bestScore = localStorage.getItem('2048_best') || 0; // 從本地存儲抓取
     let gameActive = false;
+
+    // 初始化最高分顯示
+    document.getElementById('best-score').innerText = bestScore;
 
     function showGame(game) {
         document.getElementById('welcome-msg').style.display = 'none';
@@ -79,7 +88,7 @@
     function init2048() {
         board = Array(16).fill(0);
         score = 0;
-        updateScore();
+        updateScoreUI();
         const grid = document.getElementById('grid-base');
         grid.innerHTML = '';
         for (let i = 0; i < 16; i++) {
@@ -113,9 +122,15 @@
         });
     }
 
-    function updateScore() { document.getElementById('score').innerText = score; }
+    function updateScoreUI() {
+        document.getElementById('score').innerText = score;
+        if (score > bestScore) {
+            bestScore = score;
+            localStorage.setItem('2048_best', bestScore); // 存入本地
+            document.getElementById('best-score').innerText = bestScore;
+        }
+    }
 
-    // 核心邏輯：移動與合併
     function slide(row) {
         let arr = row.filter(v => v !== 0);
         for (let i = 0; i < arr.length - 1; i++) {
@@ -146,11 +161,10 @@
             indices.forEach((idx, j) => board[idx] = newRow[j]);
         }
         if (JSON.stringify(oldBoard) !== JSON.stringify(board)) {
-            spawn(); updateScore();
+            spawn(); updateScoreUI();
         }
     }
 
-    // 監聽按鍵 (WASD + 方向鍵)
     window.addEventListener('keydown', e => {
         const keyMap = {
             'ArrowLeft': 'left', 'KeyA': 'left',
@@ -158,10 +172,7 @@
             'ArrowUp': 'up', 'KeyW': 'up',
             'ArrowDown': 'down', 'KeyS': 'down'
         };
-        if (keyMap[e.code]) {
-            e.preventDefault(); // 防止網頁捲動
-            move(keyMap[e.code]);
-        }
+        if (keyMap[e.code]) { e.preventDefault(); move(keyMap[e.code]); }
     });
 </script>
 </body>

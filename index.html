@@ -170,7 +170,7 @@
         if(btn) btn.classList.add('active');
         
         if(window.snakeInterval) clearInterval(window.snakeInterval);
-        cancelAnimationFrame(mainLoop);
+        cancelAnimationFrame(mainLoop); // 徹底停止上一個遊戲的繪圖 Loop
         closeModal();
 
         currentGame = game;
@@ -203,7 +203,7 @@
     }
 
     function openModal(title, msg, actions = []) {
-        gameActive = false;
+        gameActive = false; // 彈窗出現時暫停遊戲邏輯
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-msg').innerText = msg;
         const container = document.getElementById('modal-actions');
@@ -382,7 +382,12 @@
     let lMirrors, lGoal, lEmitter;
     function initLaser() {
         lEmitter = { x: 0, y: 2 }; 
-        lGoal = { x: 4, y: 2 }; 
+        // 隨機金塊位置：避開發射器同一列
+        let gx = Math.floor(Math.random() * 4) + 1; // 1~4 欄
+        let gy = Math.floor(Math.random() * 5);     // 0~4 列
+        if(gx === lEmitter.x && gy === lEmitter.y) gx = 4; // 萬一撞車
+        
+        lGoal = { x: gx, y: gy }; 
         lMirrors = Array(25).fill(null);
         document.getElementById('best').innerText = "-";
         drawLaserGame();
@@ -478,7 +483,6 @@
             traceLaser(nx, ny, ndx, ndy, step + 1);
         } else {
             ctx.lineTo(nx, ny);
-            // 判定目標
             let gx = lGoal.x * sz + sz/2, gy = lGoal.y * sz + sz/2;
             if(dx !== 0 && Math.abs(y-gy) < 20 && ((dx>0 && x<gx)||(dx<0 && x>gx))) {
                 if(gameActive) openModal("精準命中！", "光束成功抵達黃色目標");
@@ -542,6 +546,7 @@
         const canvas = document.getElementById('defenseCanvas'); const ctx = canvas.getContext('2d');
         ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 400);
         
+        // 修正：只有當 gameActive 為真時才處理敵人邏輯，並確保只有單一 Loop 運行
         if(gameActive) {
             if (Math.random() < 0.02) {
                 let angle = Math.random() * Math.PI * 2;

@@ -3,8 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲開發平台 - 模組化版本</title>
-    <link rel="stylesheet" href="style.css">
+    <title>遊戲開發平台</title>
+    <style>
+        :root { --sidebar-width: 260px; --dark-bg: #1e1f20; --item-hover: #333537; --accent: #8ab4f8; --light-text: #e3e3e3; }
+        body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
+
+        /* --- 側邊選單 --- */
+        #sidebar { 
+            width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; 
+            border-right: 1px solid #444; z-index: 100; flex-shrink: 0;
+            overflow: hidden; 
+        }
+        #sidebar.collapsed { width: 0; border: none; visibility: hidden; opacity: 0; }
+        .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
+        .menu-category { font-size: 0.8rem; color: #9aa0a6; margin: 20px 0 10px 10px; text-transform: uppercase; white-space: nowrap; }
+        .menu-item { padding: 12px 15px; margin: 4px 0; border-radius: 25px; cursor: pointer; display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+        .menu-item:hover { background: var(--item-hover); }
+        .menu-item.active { background: #394457; color: var(--accent); }
+
+        /* --- 主內容 --- */
+        #main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
+        #header { background: #131314; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .nav-left { display: flex; align-items: center; gap: 15px; }
+        #menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; flex-shrink: 0; }
+        #menu-toggle:hover { background: var(--item-hover); }
+        .score-box { display: flex; gap: 10px; }
+        .score-item { font-size: 0.9rem; background: #282a2d; padding: 8px 15px; border-radius: 10px; border: 1px solid #444; min-width: 80px; text-align: center; }
+
+        /* --- 遊戲顯示區域 --- */
+        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; position: relative; }
+        
+        #game-2048 { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; position: relative; margin: auto; }
+        #grid-base { position: relative; width: 100%; height: 100%; }
+        .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
+        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; }
+
+        #game-snake, #game-magnet, #game-defense { display: none; flex-direction: column; align-items: center; justify-content: center; }
+        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; height: auto; cursor: crosshair; }
+
+        /* 彈窗 */
+        #custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #2c2c2c; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); box-shadow: 0 0 30px rgba(138, 180, 248, 0.3); }
+        .modal-btn { background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; margin: 10px; transition: 0.2s; }
+        .modal-btn:hover { opacity: 0.8; transform: scale(1.05); }
+        .modal-btn.secondary { background: #555; color: white; }
+
+        /* 2048 色彩 */
+        .n2 { background: #eee4da; } .n4 { background: #ede0c8; } .n8 { background: #f2b179; color: white; }
+        .n16 { background: #f59563; color: white; } .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; }
+        .n128 { background: #edcf72; color: white; font-size: 22px; } .n256 { background: #edcc61; color: white; font-size: 22px; }
+        .n512 { background: #edc850; color: white; font-size: 22px; } .n1024 { background: #edc53f; color: white; font-size: 18px; }
+        .n2048 { background: #edc22e; color: white; font-size: 18px; box-shadow: 0 0 15px 5px rgba(243, 215, 116, 0.4); }
+    </style>
 </head>
 <body>
 
@@ -24,6 +74,7 @@
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
         <div class="menu-category">動作系列</div>
         <div class="menu-item" id="btn-magnet" onclick="switchGame('magnet')"><span>🧲</span> 極地磁鐵</div>
+        <div class="menu-item" id="btn-defense" onclick="switchGame('defense')"><span>🛡️</span> 色塊防線</div>
         <div class="menu-category">設定</div>
         <div class="menu-item" onclick="localStorage.clear(); location.reload();"><span>🗑️</span> 清除紀錄</div>
     </div>
@@ -43,20 +94,310 @@
 
     <div id="game-display">
         <h3 id="welcome-msg">← 點擊選單開始遊戲</h3>
-        
         <div id="game-2048"><div id="grid-base"></div></div>
-        
-        <div id="game-snake">
-            <canvas id="snakeCanvas" width="400" height="400"></canvas>
-        </div>
-        
-        <div id="game-magnet">
-            <canvas id="magnetCanvas" width="400" height="500"></canvas>
-            <p style="color: #888; margin-top: 15px;">點擊畫布或按空白鍵切換重力</p>
+        <div id="game-snake"><canvas id="snakeCanvas" width="400" height="400"></canvas></div>
+        <div id="game-magnet"><canvas id="magnetCanvas" width="400" height="500"></canvas></div>
+        <div id="game-defense">
+            <canvas id="defenseCanvas" width="400" height="400"></canvas>
+            <p style="color: #888; margin-top: 15px;">使用 A / D 或 方向鍵旋轉方塊</p>
         </div>
     </div>
 </div>
 
-<script src="script.js"></script>
+<script>
+    let currentGame = "", gameActive = false;
+    let mainLoop; 
+    let hasWon2048 = false;
+
+    function toggleSidebar() { 
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    }
+
+    function switchGame(game) {
+        document.getElementById('welcome-msg').style.display = 'none';
+        document.getElementById('game-2048').style.display = 'none';
+        document.getElementById('game-snake').style.display = 'none';
+        document.getElementById('game-magnet').style.display = 'none';
+        document.getElementById('game-defense').style.display = 'none';
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('btn-' + game).classList.add('active');
+        
+        if(window.snakeInterval) clearInterval(window.snakeInterval);
+        cancelAnimationFrame(mainLoop);
+        closeModal();
+
+        if(game === '2048') {
+            currentGame = "2048"; document.getElementById('current-title').innerText = "2048";
+            document.getElementById('game-2048').style.display = 'block'; 
+            hasWon2048 = false; init2048();
+        } else if(game === 'snake') {
+            currentGame = "snake"; document.getElementById('current-title').innerText = "貪食蛇";
+            document.getElementById('game-snake').style.display = 'flex'; initSnake();
+        } else if(game === 'magnet') {
+            currentGame = "magnet"; document.getElementById('current-title').innerText = "極地磁鐵";
+            document.getElementById('game-magnet').style.display = 'flex'; initMagnet();
+        } else if(game === 'defense') {
+            currentGame = "defense"; document.getElementById('current-title').innerText = "色塊防線";
+            document.getElementById('game-defense').style.display = 'flex'; initDefense();
+        }
+    }
+
+    function openModal(title, msg, actions = []) {
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-msg').innerText = msg;
+        const container = document.getElementById('modal-actions');
+        container.innerHTML = '';
+        if (actions.length === 0) actions = [{ text: "再次挑戰", callback: restartCurrentGame, class: "" }];
+        actions.forEach(act => {
+            const btn = document.createElement('button');
+            btn.className = 'modal-btn ' + (act.class || '');
+            btn.innerText = act.text;
+            btn.onclick = act.callback;
+            container.appendChild(btn);
+        });
+        document.getElementById('custom-modal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('custom-modal').style.display = 'none'; }
+
+    function restartCurrentGame() {
+        closeModal();
+        if(currentGame === '2048') { hasWon2048 = false; init2048(); }
+        else if(currentGame === 'snake') initSnake();
+        else if(currentGame === 'magnet') initMagnet();
+        else if(currentGame === 'defense') initDefense();
+    }
+
+    // --- 2048 邏輯 (保持原樣) ---
+    let b2048 = [], s2048 = 0;
+    function init2048() {
+        b2048 = Array(16).fill(0); s2048 = 0; gameActive = true;
+        document.getElementById('best').innerText = localStorage.getItem('2048_best') || 0;
+        const grid = document.getElementById('grid-base'); grid.innerHTML = '';
+        for (let i = 0; i < 16; i++) {
+            let c = document.createElement('div'); c.className = 'cell';
+            c.style.left = (i % 4) * 78 + 'px'; c.style.top = Math.floor(i / 4) * 78 + 'px';
+            grid.appendChild(c);
+        }
+        spawn2048(); spawn2048();
+    }
+    function spawn2048() {
+        let empty = b2048.map((v, i) => v === 0 ? i : null).filter(v => v !== null);
+        if(empty.length) b2048[empty[Math.floor(Math.random() * empty.length)]] = 2;
+        render2048();
+    }
+    function render2048() {
+        const grid = document.getElementById('grid-base');
+        grid.querySelectorAll('.tile').forEach(t => t.remove());
+        b2048.forEach((val, i) => {
+            if(val > 0) {
+                let t = document.createElement('div');
+                let classValue = val > 2048 ? 2048 : val;
+                t.className = `tile n${classValue}`;
+                t.innerText = val;
+                t.style.left = (i % 4) * 78 + 'px'; t.style.top = Math.floor(i / 4) * 78 + 'px';
+                grid.appendChild(t);
+            }
+        });
+        document.getElementById('score').innerText = s2048;
+        let best = localStorage.getItem('2048_best') || 0;
+        if(s2048 > parseInt(best)) { localStorage.setItem('2048_best', s2048); document.getElementById('best').innerText = s2048; }
+        if (!hasWon2048 && b2048.includes(2048)) {
+            hasWon2048 = true;
+            openModal("🏆 傳奇誕生！", "成功合成了 2048 方塊！", [{ text: "繼續挑戰", callback: closeModal, class: "secondary" }, { text: "重新開始", callback: restartCurrentGame }]);
+        } else { check2048GameOver(); }
+    }
+    function move2048(dir) {
+        if(!gameActive) return;
+        let old = [...b2048];
+        for (let i = 0; i < 4; i++) {
+            let row = [], indices = [];
+            for (let j = 0; j < 4; j++) {
+                let idx = (dir==='left')? i*4+j : (dir==='right')? i*4+(3-j) : (dir==='up')? j*4+i : (3-j)*4+i;
+                indices.push(idx); row.push(b2048[idx]);
+            }
+            let newRow = slideRow(row);
+            indices.forEach((idx, j) => b2048[idx] = newRow[j]);
+        }
+        if (JSON.stringify(old) !== JSON.stringify(b2048)) { spawn2048(); }
+    }
+    function slideRow(row) {
+        let arr = row.filter(v => v !== 0);
+        for (let i = 0; i < arr.length - 1; i++) { if (arr[i] === arr[i+1]) { arr[i] *= 2; s2048 += arr[i]; arr.splice(i+1, 1); } }
+        while (arr.length < 4) arr.push(0); return arr;
+    }
+    function check2048GameOver() {
+        if (b2048.includes(0)) return;
+        for (let i = 0; i < 16; i++) {
+            if (i % 4 < 3 && b2048[i] === b2048[i+1]) return;
+            if (i < 12 && b2048[i] === b2048[i+4]) return;
+        }
+        gameActive = false; openModal("遊戲結束", "格子填滿了！得分：" + s2048);
+    }
+
+    // --- 貪食蛇 & 極地磁鐵 (保持原樣，略作分段標記) ---
+    let snake, food, dx, dy, sSnake;
+    function initSnake() {
+        let canvas = document.getElementById('snakeCanvas'); 
+        snake = [{x: 200, y: 200}, {x: 190, y: 200}]; dx = 10; dy = 0; sSnake = 0;
+        document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
+        document.getElementById('score').innerText = 0; createFood();
+        window.snakeInterval = setInterval(drawSnake, 100);
+    }
+    function drawSnake() {
+        let canvas = document.getElementById('snakeCanvas'); let ctx = canvas.getContext('2d');
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
+            clearInterval(window.snakeInterval); openModal("遊戲結束", "得分：" + sSnake); return;
+        }
+        snake.unshift(head);
+        if (head.x === food.x && head.y === food.y) {
+            sSnake += 1; document.getElementById('score').innerText = sSnake;
+            let best = localStorage.getItem('snake_best') || 0;
+            if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
+            createFood();
+        } else { snake.pop(); }
+        ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
+        ctx.fillStyle = "#ff5252"; ctx.fillRect(food.x, food.y, 10, 10);
+        ctx.fillStyle = "#8ab4f8"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10));
+    }
+    function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
+
+    let mMagnet, mObstacles, mGravity, mDirection, mScore;
+    function initMagnet() {
+        mMagnet = { x: 50, y: 250, radius: 15, velocity: 0 };
+        mGravity = 0.22; mDirection = 1; mObstacles = []; mScore = 0; gameActive = true;
+        document.getElementById('best').innerText = localStorage.getItem('magnet_best') || 0;
+        document.getElementById('score').innerText = 0; magnetLoop();
+    }
+    function magnetLoop() {
+        if(currentGame !== 'magnet') return;
+        let canvas = document.getElementById('magnetCanvas'); let ctx = canvas.getContext('2d');
+        mMagnet.velocity += mGravity * mDirection; mMagnet.velocity *= 0.98; mMagnet.y += mMagnet.velocity;
+        if (mMagnet.y < 0 || mMagnet.y > canvas.height) { gameActive = false; openModal("磁場潰散", "得分：" + mScore); return; }
+        if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < canvas.width - 220) {
+            let gap = 170; let rY = Math.random() * (canvas.height - gap - 100) + 50;
+            mObstacles.push({ x: canvas.width, top: rY, bottom: rY + gap, passed: false });
+        }
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#00f2ff";
+        mObstacles.forEach((obs, i) => {
+            obs.x -= 3.5; ctx.fillRect(obs.x, 0, 50, obs.top); ctx.fillRect(obs.x, obs.bottom, 50, canvas.height);
+            if (mMagnet.x + 10 > obs.x && mMagnet.x - 10 < obs.x + 50) {
+                if (mMagnet.y - 10 < obs.top || mMagnet.y + 10 > obs.bottom) { gameActive = false; openModal("任務失敗", "得分：" + mScore); return; }
+            }
+            if (!obs.passed && obs.x < mMagnet.x) {
+                mScore++; obs.passed = true; document.getElementById('score').innerText = mScore;
+                let best = localStorage.getItem('magnet_best') || 0;
+                if(mScore > parseInt(best)) { localStorage.setItem('magnet_best', mScore); document.getElementById('best').innerText = mScore; }
+            }
+            if (obs.x < -60) mObstacles.splice(i, 1);
+        });
+        ctx.beginPath(); ctx.arc(mMagnet.x, mMagnet.y, mMagnet.radius, 0, Math.PI*2);
+        ctx.fillStyle = mDirection > 0 ? "#ff4d4d" : "#4d79ff"; ctx.fill(); ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+        mainLoop = requestAnimationFrame(magnetLoop);
+    }
+
+    // --- 色塊防線 (Color Defense) 邏輯 ---
+    let dRot, dEnemies, dScore, dHealth, dLastSpawn;
+    const D_COLORS = ['#ff4d4d', '#4d79ff', '#ffeb3b', '#4caf50']; // 紅藍黃綠
+
+    function initDefense() {
+        dRot = 0; dEnemies = []; dScore = 0; dHealth = 3; dLastSpawn = 0; gameActive = true;
+        document.getElementById('best').innerText = localStorage.getItem('defense_best') || 0;
+        document.getElementById('score').innerText = 0; defenseLoop();
+    }
+
+    function defenseLoop() {
+        if(currentGame !== 'defense') return;
+        const canvas = document.getElementById('defenseCanvas');
+        const ctx = canvas.getContext('2d');
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 生成敵人
+        let now = Date.now();
+        if (now - dLastSpawn > Math.max(1500 - dScore * 10, 600)) {
+            let angle = Math.random() * Math.PI * 2;
+            let colorIdx = Math.floor(Math.random() * 4);
+            dEnemies.push({ x: cx + Math.cos(angle) * 250, y: cy + Math.sin(angle) * 250, colorIdx, speed: 2 + (dScore/100) });
+            dLastSpawn = now;
+        }
+
+        dEnemies.forEach((enemy, index) => {
+            let dx = cx - enemy.x, dy = cy - enemy.y, dist = Math.sqrt(dx*dx + dy*dy);
+            enemy.x += (dx / dist) * enemy.speed; enemy.y += (dy / dist) * enemy.speed;
+
+            ctx.beginPath(); ctx.arc(enemy.x, enemy.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = D_COLORS[enemy.colorIdx]; ctx.fill();
+
+            if (dist < 65) {
+                // 判斷邏輯：將敵人進入的角度轉換為 0-3 索引
+                let hitAngle = (Math.atan2(enemy.y - cy, enemy.x - cx) * 180 / Math.PI + 360 + 45) % 360;
+                let hitSide = Math.floor(hitAngle / 90); // 0:右, 1:下, 2:左, 3:上
+                
+                // 計算正方形當前對應面是什麼顏色
+                let normalizedRot = ((dRot % 360) + 360) % 360;
+                let rotOffset = normalizedRot / 90;
+                let colorOnSide = (enemy.colorIdx + rotOffset) % 4;
+                
+                // 簡化判定：只要當前邊緣顏色正確
+                // 正方形初始順序是 0:上(紅), 1:右(藍), 2:下(黃), 3:左(綠)
+                // 這裡我們比對：(旋轉後的顏色索引 == 進入方位)
+                let actualSideColors = []; 
+                for(let i=0; i<4; i++) actualSideColors[(i + rotOffset) % 4] = i;
+                
+                // 轉換 hitSide 對應我們的繪製順序 (0:上, 1:右, 2:下, 3:左)
+                let sideMapping = [1, 2, 3, 0]; // hitSide 0是右, 1是下...
+                if (actualSideColors[sideMapping[hitSide]] === enemy.colorIdx) {
+                    dScore += 10; document.getElementById('score').innerText = dScore;
+                } else {
+                    dHealth--;
+                    if(dHealth <= 0) { gameActive = false; openModal("防線崩潰", "得分：" + dScore); }
+                }
+                dEnemies.splice(index, 1);
+            }
+        });
+
+        // 繪製中心正方形
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(dRot * Math.PI / 180);
+        ctx.lineWidth = 10; const s = 50;
+        ctx.strokeStyle = D_COLORS[0]; ctx.beginPath(); ctx.moveTo(-s, -s); ctx.lineTo(s, -s); ctx.stroke(); // 上
+        ctx.strokeStyle = D_COLORS[1]; ctx.beginPath(); ctx.moveTo(s, -s); ctx.lineTo(s, s); ctx.stroke();   // 右
+        ctx.strokeStyle = D_COLORS[2]; ctx.beginPath(); ctx.moveTo(s, s); ctx.lineTo(-s, s); ctx.stroke();   // 下
+        ctx.strokeStyle = D_COLORS[3]; ctx.beginPath(); ctx.moveTo(-s, s); ctx.lineTo(-s, -s); ctx.stroke(); // 左
+        ctx.restore();
+
+        ctx.fillStyle = "white"; ctx.font = "16px Arial"; ctx.fillText("HP: " + "❤️".repeat(dHealth), 20, 30);
+        let best = localStorage.getItem('defense_best') || 0;
+        if(dScore > parseInt(best)) { localStorage.setItem('defense_best', dScore); document.getElementById('best').innerText = dScore; }
+        mainLoop = requestAnimationFrame(defenseLoop);
+    }
+
+    // --- 事件監聽 ---
+    window.addEventListener('keydown', e => {
+        const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down','Space':'space'};
+        if(m[e.code]) {
+            e.preventDefault();
+            if(currentGame === "2048") move2048(m[e.code]);
+            else if(currentGame === "snake") {
+                const k = m[e.code];
+                if(k==='up' && dy===0){dx=0;dy=-10;} else if(k==='down' && dy===0){dx=0;dy=10;}
+                else if(k==='left' && dx===0){dx=-10;dy=0;} else if(k==='right' && dx===0){dx=10;dy=0;}
+            }
+            else if(currentGame === "magnet" && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
+                mDirection *= -1;
+            }
+            else if(currentGame === "defense") {
+                if(m[e.code] === 'left') dRot -= 90;
+                if(m[e.code] === 'right') dRot += 90;
+            }
+        }
+    });
+
+    document.getElementById('magnetCanvas').addEventListener('mousedown', (e) => {
+        if(currentGame === "magnet") { e.preventDefault(); mDirection *= -1; }
+    });
+</script>
 </body>
 </html>

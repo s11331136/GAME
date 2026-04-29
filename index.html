@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲開發平台 - 完整旗艦版</title>
+    <title>遊戲開發平台</title>
     <style>
         :root { 
             --sidebar-width: 260px; 
@@ -47,7 +47,7 @@
         .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; }
 
         /* Canvas 類遊戲共通樣式 */
-        #game-snake, #game-magnet, #game-defense { display: none; flex-direction: column; align-items: center; }
+        #game-snake, #game-magnet, #game-defense, #game-breakout, #game-laser { display: none; flex-direction: column; align-items: center; }
         canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; cursor: crosshair; }
 
         /* 一筆畫地牢樣式 */
@@ -98,7 +98,9 @@
         <div class="menu-item" id="btn-2048" onclick="switchGame('2048')"><span>🎮</span> 2048</div>
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
         <div class="menu-item" id="btn-dungeon" onclick="switchGame('dungeon')"><span>🗝️</span> 一筆畫地牢</div>
+        <div class="menu-item" id="btn-laser" onclick="switchGame('laser')"><span>⚡</span> 雷射導引</div>
         <div class="menu-category">動作反饋</div>
+        <div class="menu-item" id="btn-breakout" onclick="switchGame('breakout')"><span>🎾</span> 極簡打磚塊</div>
         <div class="menu-item" id="btn-magnet" onclick="switchGame('magnet')"><span>🧲</span> 極地磁鐵</div>
         <div class="menu-item" id="btn-defense" onclick="switchGame('defense')"><span>🛡️</span> 色塊防線</div>
         <div class="menu-category">管理</div>
@@ -122,16 +124,12 @@
         <h3 id="welcome-msg">← 點擊左側選單開始遊戲</h3>
         
         <div id="game-2048"><div id="grid-base"></div></div>
-        
         <div id="game-snake"><canvas id="snakeCanvas" width="400" height="400"></canvas></div>
-        
         <div id="game-magnet"><canvas id="magnetCanvas" width="400" height="500"></canvas></div>
-        
         <div id="game-defense">
             <canvas id="defenseCanvas" width="400" height="400"></canvas>
             <p style="color: #888; margin-top: 15px;">使用 A / D 或 方向鍵旋轉方塊</p>
         </div>
-
         <div id="game-dungeon">
             <div id="dungeon-board"></div>
             <div id="dungeon-stats" style="margin-top: 15px; text-align: center;">
@@ -142,6 +140,11 @@
                     <button class="modal-btn secondary" onclick="initDungeon()" style="padding: 5px 15px; font-size: 0.8rem;">🔄 重置</button>
                 </div>
             </div>
+        </div>
+        <div id="game-breakout"><canvas id="breakoutCanvas" width="400" height="500"></canvas></div>
+        <div id="game-laser">
+            <canvas id="laserCanvas" width="400" height="400"></canvas>
+            <p style="color: #888; margin-top: 15px;">點擊格子放置/旋轉鏡子，讓光束擊中黃色目標</p>
         </div>
     </div>
 </div>
@@ -156,9 +159,8 @@
     }
 
     function switchGame(game) {
-        // 隱藏所有遊戲
         document.getElementById('welcome-msg').style.display = 'none';
-        ['game-2048', 'game-snake', 'game-magnet', 'game-defense', 'game-dungeon'].forEach(id => {
+        ['game-2048', 'game-snake', 'game-magnet', 'game-defense', 'game-dungeon', 'game-breakout', 'game-laser'].forEach(id => {
             document.getElementById(id).style.display = 'none';
         });
         
@@ -166,13 +168,13 @@
         const btn = document.getElementById('btn-' + game);
         if(btn) btn.classList.add('active');
         
-        // 清除舊定時器
         if(window.snakeInterval) clearInterval(window.snakeInterval);
         cancelAnimationFrame(mainLoop);
         closeModal();
 
         currentGame = game;
         gameActive = true;
+        document.getElementById('score').innerText = "0";
 
         if(game === '2048') {
             document.getElementById('current-title').innerText = "2048";
@@ -190,6 +192,12 @@
         } else if(game === 'dungeon') {
             document.getElementById('current-title').innerText = "一筆畫地牢";
             document.getElementById('game-dungeon').style.display = 'flex'; initDungeon();
+        } else if(game === 'breakout') {
+            document.getElementById('current-title').innerText = "極簡打磚塊";
+            document.getElementById('game-breakout').style.display = 'flex'; initBreakout();
+        } else if(game === 'laser') {
+            document.getElementById('current-title').innerText = "雷射導引";
+            document.getElementById('game-laser').style.display = 'flex'; initLaser();
         }
     }
 
@@ -213,11 +221,7 @@
 
     function restartCurrentGame() {
         closeModal();
-        if(currentGame === '2048') init2048();
-        else if(currentGame === 'snake') initSnake();
-        else if(currentGame === 'magnet') initMagnet();
-        else if(currentGame === 'defense') initDefense();
-        else if(currentGame === 'dungeon') initDungeon();
+        switchGame(currentGame);
     }
 
     // --- 2048 核心 ---
@@ -311,6 +315,143 @@
     }
     function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
 
+    // --- 極簡打磚塊 ---
+    let bBall, bPaddle, bBricks, bParticles, bScore;
+    function initBreakout() {
+        bBall = { x: 200, y: 400, dx: 3.5, dy: -3.5, r: 8 };
+        bPaddle = { x: 160, w: 80, h: 10 };
+        bBricks = []; bParticles = []; bScore = 0;
+        document.getElementById('best').innerText = localStorage.getItem('breakout_best') || 0;
+        for(let r=0; r<4; r++) {
+            for(let c=0; c<6; c++) {
+                bBricks.push({ x: c*65+10, y: r*25+50, w: 55, h: 15, active: true });
+            }
+        }
+        breakoutLoop();
+    }
+    function breakoutLoop() {
+        if(currentGame !== 'breakout') return;
+        const canvas = document.getElementById('breakoutCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 500);
+
+        bBall.x += bBall.dx; bBall.y += bBall.dy;
+        if(bBall.x + bBall.r > 400 || bBall.x - bBall.r < 0) bBall.dx *= -1;
+        if(bBall.y - bBall.r < 0) bBall.dy *= -1;
+        if(bBall.y + bBall.r > 480 && bBall.x > bPaddle.x && bBall.x < bPaddle.x + bPaddle.w) {
+            bBall.dy = -Math.abs(bBall.dy) * 1.02;
+            bBall.dx += (bBall.x - (bPaddle.x + bPaddle.w/2)) / 8;
+        }
+        if(bBall.y > 500) { openModal("挑戰失敗", "得分：" + bScore); return; }
+
+        let activeCount = 0;
+        bBricks.forEach(b => {
+            if(b.active) {
+                activeCount++;
+                if(bBall.x > b.x && bBall.x < b.x + b.w && bBall.y - bBall.r < b.y + b.h && bBall.y + bBall.r > b.y) {
+                    b.active = false; bBall.dy *= -1; bScore += 20;
+                    document.getElementById('score').innerText = bScore;
+                    for(let i=0; i<6; i++) bParticles.push({x: b.x+b.w/2, y: b.y+b.h/2, dx: (Math.random()-0.5)*6, dy: (Math.random()-0.5)*6, life: 25});
+                }
+                ctx.fillStyle = "#8ab4f8"; ctx.fillRect(b.x, b.y, b.w, b.h);
+            }
+        });
+        if(activeCount === 0) { openModal("完美清空！", "得分：" + bScore); return; }
+
+        bParticles.forEach((p, i) => {
+            p.x += p.dx; p.y += p.dy; p.life--;
+            ctx.fillStyle = `rgba(138, 180, 248, ${p.life/25})`;
+            ctx.fillRect(p.x, p.y, 3, 3);
+            if(p.life <= 0) bParticles.splice(i, 1);
+        });
+
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(bBall.x, bBall.y, bBall.r, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "var(--accent)"; ctx.fillRect(bPaddle.x, 480, bPaddle.w, bPaddle.h);
+        
+        let best = localStorage.getItem('breakout_best') || 0;
+        if(bScore > parseInt(best)) { localStorage.setItem('breakout_best', bScore); }
+
+        mainLoop = requestAnimationFrame(breakoutLoop);
+    }
+
+    // --- 雷射導引 ---
+    let lMirrors, lGoal, lEmitter;
+    function initLaser() {
+        lEmitter = { x: 0, y: 2 }; lGoal = { x: 4, y: 2 };
+        lMirrors = Array(25).fill(null);
+        document.getElementById('best').innerText = "-";
+        drawLaserGame();
+        document.getElementById('laserCanvas').onclick = (e) => {
+            if(currentGame !== 'laser') return;
+            const rect = e.target.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / 80), y = Math.floor((e.clientY - rect.top) / 80);
+            const idx = y * 5 + x;
+            if(lMirrors[idx] === null) lMirrors[idx] = 45;
+            else if(lMirrors[idx] === 45) lMirrors[idx] = 135;
+            else lMirrors[idx] = null;
+            drawLaserGame();
+        };
+    }
+    function drawLaserGame() {
+        const canvas = document.getElementById('laserCanvas');
+        const ctx = canvas.getContext('2d');
+        const sz = 80; ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,400,400);
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+        for(let i=0; i<=5; i++) { 
+            ctx.beginPath(); ctx.moveTo(i*sz, 0); ctx.lineTo(i*sz, 400); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i*sz); ctx.lineTo(400, i*sz); ctx.stroke();
+        }
+        lMirrors.forEach((m, i) => {
+            if(m) {
+                const x = (i % 5) * sz, y = Math.floor(i / 5) * sz;
+                ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.beginPath();
+                if(m === 45) { ctx.moveTo(x+15, y+sz-15); ctx.lineTo(x+sz-15, y+15); }
+                else { ctx.moveTo(x+15, y+15); ctx.lineTo(x+sz-15, y+sz-15); }
+                ctx.stroke();
+            }
+        });
+        ctx.beginPath(); ctx.strokeStyle = "#ff5252"; ctx.lineWidth = 4;
+        ctx.shadowBlur = 10; ctx.shadowColor = "#ff5252"; ctx.moveTo(0, lEmitter.y*sz + sz/2);
+        traceLaser(0, lEmitter.y*sz + sz/2, 1, 0);
+        ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.font = "30px Arial"; ctx.fillText("🎯", lGoal.x*sz+25, lGoal.y*sz+55);
+    }
+    function traceLaser(x, y, dx, dy, step = 0) {
+        if(step > 12) return;
+        const sz = 80;
+        let nx = x + dx * 400, ny = y + dy * 400;
+        let hitMirror = false;
+        for(let i=0; i<25; i++) {
+            if(lMirrors[i]) {
+                const mx = (i % 5) * sz, my = Math.floor(i / 5) * sz;
+                const cx = mx + sz/2, cy = my + sz/2;
+                // 簡單碰撞檢測
+                if(dx !== 0 && Math.abs(y-cy) < 5 && ((dx>0 && x<cx)||(dx<0 && x>cx))) {
+                    nx = cx; ny = cy; hitMirror = true;
+                    const ctx = document.getElementById('laserCanvas').getContext('2d');
+                    ctx.lineTo(nx, ny);
+                    let ndx = (lMirrors[i] === 45) ? -dy : dy;
+                    let ndy = (lMirrors[i] === 45) ? -dx : dx;
+                    traceLaser(nx, ny, ndx, ndy, step + 1); break;
+                } else if(dy !== 0 && Math.abs(x-cx) < 5 && ((dy>0 && y<cy)||(dy<0 && y>cy))) {
+                    nx = cx; ny = cy; hitMirror = true;
+                    const ctx = document.getElementById('laserCanvas').getContext('2d');
+                    ctx.lineTo(nx, ny);
+                    let ndx = (lMirrors[i] === 45) ? -dy : dy;
+                    let ndy = (lMirrors[i] === 45) ? -dx : dx;
+                    traceLaser(nx, ny, ndx, ndy, step + 1); break;
+                }
+            }
+        }
+        if(!hitMirror) {
+            const ctx = document.getElementById('laserCanvas').getContext('2d');
+            ctx.lineTo(nx, ny);
+            if(Math.abs(nx-(lGoal.x*sz+sz/2)) < 40 && Math.abs(ny-(lGoal.y*sz+sz/2)) < 40) {
+                if(gameActive) { gameActive=false; setTimeout(()=>openModal("精準命中！", "光束成功抵達目標"), 100); }
+            }
+        }
+    }
+
     // --- 極地磁鐵 ---
     let mMagnet, mObstacles, mDirection, mScore;
     function initMagnet() {
@@ -367,7 +508,6 @@
             if (dist < 60) {
                 let hitAngle = (Math.atan2(en.y-200, en.x-200)*180/Math.PI + 360 + 45 - dRot) % 360;
                 let side = Math.floor(hitAngle/90);
-                // 邏輯簡化：對應顏色匹配
                 if ([1,2,3,0][side] === en.color) { dDefScore += 10; document.getElementById('score').innerText = dDefScore; }
                 else { dHealth--; if(dHealth <=0) openModal("防線潰散", "得分："+dDefScore); }
                 dEnemies.splice(i, 1);
@@ -441,6 +581,15 @@
         } else if (currentGame === "defense") {
             if(k.includes('Left') || k==='KeyA') dRot -= 90;
             if(k.includes('Right') || k==='KeyD') dRot += 90;
+        }
+    });
+
+    // 打磚塊滑鼠控制
+    window.addEventListener('mousemove', e => {
+        if(currentGame === 'breakout') {
+            const rect = document.getElementById('breakoutCanvas').getBoundingClientRect();
+            let mouseX = e.clientX - rect.left;
+            bPaddle.x = Math.max(0, Math.min(400 - bPaddle.w, mouseX - bPaddle.w/2));
         }
     });
 

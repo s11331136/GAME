@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲開發平台</title>
+    <title>遊戲倉庫</title>
     <style>
         :root { 
             --sidebar-width: 260px; 
@@ -377,30 +377,51 @@
     // --- 雷射導引 ---
     let lMirrors, lGoal, lEmitter;
     function initLaser() {
-        lEmitter = { x: 0, y: 2 }; lGoal = { x: 4, y: 2 };
+        lEmitter = { x: 0, y: 2 }; 
+        lGoal = { x: 4, y: 2 }; // 固定目標在 (4, 2)
         lMirrors = Array(25).fill(null);
         document.getElementById('best').innerText = "-";
         drawLaserGame();
-        document.getElementById('laserCanvas').onclick = (e) => {
+        
+        const canvas = document.getElementById('laserCanvas');
+        canvas.onclick = (e) => {
             if(currentGame !== 'laser') return;
-            const rect = e.target.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / 80), y = Math.floor((e.clientY - rect.top) / 80);
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (canvas.clientWidth / 5));
+            const y = Math.floor((e.clientY - rect.top) / (canvas.clientHeight / 5));
             const idx = y * 5 + x;
+            
+            // 點擊邏輯：空 -> 45度 -> 135度 -> 空
             if(lMirrors[idx] === null) lMirrors[idx] = 45;
             else if(lMirrors[idx] === 45) lMirrors[idx] = 135;
             else lMirrors[idx] = null;
+            
             drawLaserGame();
         };
     }
+
     function drawLaserGame() {
         const canvas = document.getElementById('laserCanvas');
         const ctx = canvas.getContext('2d');
-        const sz = 80; ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,400,400);
+        const sz = 80;
+        
+        // 1. 背景與網格
+        ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,400,400);
         ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
         for(let i=0; i<=5; i++) { 
             ctx.beginPath(); ctx.moveTo(i*sz, 0); ctx.lineTo(i*sz, 400); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(0, i*sz); ctx.lineTo(400, i*sz); ctx.stroke();
         }
+
+        // 2. 繪製「黃色」目標 (修正看不到問題)
+        ctx.save();
+        ctx.fillStyle = "#ffd700"; // 金黃色
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#ffd700";
+        ctx.fillRect(lGoal.x * sz + 20, lGoal.y * sz + 20, 40, 40);
+        ctx.restore();
+
+        // 3. 繪製鏡子
         lMirrors.forEach((m, i) => {
             if(m) {
                 const x = (i % 5) * sz, y = Math.floor(i / 5) * sz;
@@ -410,44 +431,61 @@
                 ctx.stroke();
             }
         });
-        ctx.beginPath(); ctx.strokeStyle = "#ff5252"; ctx.lineWidth = 4;
-        ctx.shadowBlur = 10; ctx.shadowColor = "#ff5252"; ctx.moveTo(0, lEmitter.y*sz + sz/2);
-        traceLaser(0, lEmitter.y*sz + sz/2, 1, 0);
-        ctx.stroke(); ctx.shadowBlur = 0;
-        ctx.font = "30px Arial"; ctx.fillText("🎯", lGoal.x*sz+25, lGoal.y*sz+55);
+
+        // 4. 繪製雷射光束
+        ctx.beginPath(); 
+        ctx.strokeStyle = "#ff5252"; 
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 10; 
+        ctx.shadowColor = "#ff5252"; 
+        ctx.moveTo(0, lEmitter.y * sz + sz/2);
+        
+        traceLaser(0, lEmitter.y * sz + sz/2, 1, 0, 0);
+        
+        ctx.stroke(); 
+        ctx.shadowBlur = 0;
     }
-    function traceLaser(x, y, dx, dy, step = 0) {
-        if(step > 12) return;
+
+    function traceLaser(x, y, dx, dy, step) {
+        if(step > 15) return; 
         const sz = 80;
         let nx = x + dx * 400, ny = y + dy * 400;
         let hitMirror = false;
+
         for(let i=0; i<25; i++) {
             if(lMirrors[i]) {
                 const mx = (i % 5) * sz, my = Math.floor(i / 5) * sz;
                 const cx = mx + sz/2, cy = my + sz/2;
-                // 簡單碰撞檢測
+                
                 if(dx !== 0 && Math.abs(y-cy) < 5 && ((dx>0 && x<cx)||(dx<0 && x>cx))) {
                     nx = cx; ny = cy; hitMirror = true;
                     const ctx = document.getElementById('laserCanvas').getContext('2d');
                     ctx.lineTo(nx, ny);
                     let ndx = (lMirrors[i] === 45) ? -dy : dy;
                     let ndy = (lMirrors[i] === 45) ? -dx : dx;
-                    traceLaser(nx, ny, ndx, ndy, step + 1); break;
+                    traceLaser(nx, ny, ndx, ndy, step + 1); 
+                    break;
                 } else if(dy !== 0 && Math.abs(x-cx) < 5 && ((dy>0 && y<cy)||(dy<0 && y>cy))) {
                     nx = cx; ny = cy; hitMirror = true;
                     const ctx = document.getElementById('laserCanvas').getContext('2d');
                     ctx.lineTo(nx, ny);
                     let ndx = (lMirrors[i] === 45) ? -dy : dy;
                     let ndy = (lMirrors[i] === 45) ? -dx : dx;
-                    traceLaser(nx, ny, ndx, ndy, step + 1); break;
+                    traceLaser(nx, ny, ndx, ndy, step + 1); 
+                    break;
                 }
             }
         }
+
         if(!hitMirror) {
             const ctx = document.getElementById('laserCanvas').getContext('2d');
             ctx.lineTo(nx, ny);
-            if(Math.abs(nx-(lGoal.x*sz+sz/2)) < 40 && Math.abs(ny-(lGoal.y*sz+sz/2)) < 40) {
-                if(gameActive) { gameActive=false; setTimeout(()=>openModal("精準命中！", "光束成功抵達目標"), 100); }
+            // 判定是否碰到黃色目標
+            if(Math.abs(nx-(lGoal.x*sz+sz/2)) < 30 && Math.abs(ny-(lGoal.y*sz+sz/2)) < 30) {
+                if(gameActive) { 
+                    gameActive = false; 
+                    setTimeout(() => openModal("精準命中！", "光束成功抵達黃色目標"), 100); 
+                }
             }
         }
     }

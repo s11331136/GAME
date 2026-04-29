@@ -8,24 +8,20 @@
         :root { --sidebar-width: 260px; --dark-bg: #1e1f20; --item-hover: #333537; --accent: #8ab4f8; --light-text: #e3e3e3; }
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
 
-        /* --- 側邊選單修正 --- */
+        /* --- 側邊選單 --- */
         #sidebar { 
             width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; 
             border-right: 1px solid #444; z-index: 100; flex-shrink: 0;
-            overflow: hidden; /* 防止收合時內容溢出 */
+            overflow: hidden; 
         }
-        #sidebar.collapsed { 
-            width: 0; border: none; 
-            visibility: hidden; /* 關鍵：讓收合後的選單內容徹底不可見 */
-            opacity: 0;
-        }
+        #sidebar.collapsed { width: 0; border: none; visibility: hidden; opacity: 0; }
         .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
         .menu-category { font-size: 0.8rem; color: #9aa0a6; margin: 20px 0 10px 10px; text-transform: uppercase; white-space: nowrap; }
         .menu-item { padding: 12px 15px; margin: 4px 0; border-radius: 25px; cursor: pointer; display: flex; align-items: center; gap: 12px; white-space: nowrap; }
         .menu-item:hover { background: var(--item-hover); }
         .menu-item.active { background: #394457; color: var(--accent); }
 
-        /* --- 主內容與導覽列 --- */
+        /* --- 主內容 --- */
         #main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
         #header { background: #131314; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .nav-left { display: flex; align-items: center; gap: 15px; }
@@ -34,24 +30,11 @@
         .score-box { display: flex; gap: 10px; }
         .score-item { font-size: 0.9rem; background: #282a2d; padding: 8px 15px; border-radius: 10px; border: 1px solid #444; }
 
-        /* --- 遊戲顯示區域 (修正置中) --- */
-        #game-display { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            padding: 20px; 
-            position: relative;
-        }
+        /* --- 遊戲顯示區域 --- */
+        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; position: relative; }
         
-        /* 2048 容器 (修正寬高與置中) */
-        #game-2048 { 
-            display: none; background: #bbada0; 
-            width: 320px; height: 320px; 
-            padding: 10px; border-radius: 6px; 
-            position: relative; /* 作為內層絕對定位的基準 */
-            margin: auto; /* 確保在 flex 容器中置中 */
-        }
+        /* 2048 容器 */
+        #game-2048 { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; margin: auto; }
         .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
         .tile { 
             width: 70px; height: 70px; border-radius: 3px; position: absolute; 
@@ -60,16 +43,15 @@
             transition: all 0.12s ease-in-out; z-index: 10;
         }
 
-        /* 貪食蛇 (保持置中) */
-        #game-snake { display: none; flex-direction: column; align-items: center; justify-content: center; }
-        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; height: auto; }
+        /* 貪食蛇與磁鐵 Canvas */
+        #game-snake, #game-magnet { display: none; flex-direction: column; align-items: center; justify-content: center; }
+        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; height: auto; cursor: crosshair; }
 
-        /* 彈窗樣式 */
+        /* 彈窗 */
         #custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: #2c2c2c; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); }
         .modal-btn { background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; margin-top: 20px; }
 
-        /* 2048 色彩 */
         .n2 { background: #eee4da; } .n4 { background: #ede0c8; } .n8 { background: #f2b179; color: white; }
         .n16 { background: #f59563; color: white; } .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; }
     </style>
@@ -90,6 +72,8 @@
         <div class="menu-category">益智系列</div>
         <div class="menu-item" id="btn-2048" onclick="switchGame('2048')"><span>🎮</span> 2048</div>
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
+        <div class="menu-category">動作系列</div>
+        <div class="menu-item" id="btn-magnet" onclick="switchGame('magnet')"><span>🧲</span> 極地磁鐵</div>
         <div class="menu-category">設定</div>
         <div class="menu-item" onclick="localStorage.clear(); location.reload();"><span>🗑️</span> 清除紀錄</div>
     </div>
@@ -114,30 +98,43 @@
             <canvas id="snakeCanvas" width="400" height="400"></canvas>
             <p style="color: #888; margin-top: 15px;">使用 WASD 或 方向鍵控制</p>
         </div>
+        <div id="game-magnet">
+            <canvas id="magnetCanvas" width="400" height="500"></canvas>
+            <p style="color: #888; margin-top: 15px;">點擊 Canvas 或 按空白鍵切換重力</p>
+        </div>
     </div>
 </div>
 
 <script>
     let currentGame = "", gameActive = false;
+    let mainLoop; // 用於儲存 requestAnimationFrame
 
     function toggleSidebar() { 
         document.getElementById('sidebar').classList.toggle('collapsed');
     }
 
     function switchGame(game) {
+        // 重設 UI
         document.getElementById('welcome-msg').style.display = 'none';
         document.getElementById('game-2048').style.display = 'none';
         document.getElementById('game-snake').style.display = 'none';
+        document.getElementById('game-magnet').style.display = 'none';
         document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
         document.getElementById('btn-' + game).classList.add('active');
+        
+        // 停止所有循環
         if(window.snakeInterval) clearInterval(window.snakeInterval);
+        cancelAnimationFrame(mainLoop);
 
         if(game === '2048') {
             currentGame = "2048"; document.getElementById('current-title').innerText = "2048";
             document.getElementById('game-2048').style.display = 'block'; init2048();
-        } else {
+        } else if(game === 'snake') {
             currentGame = "snake"; document.getElementById('current-title').innerText = "貪食蛇";
             document.getElementById('game-snake').style.display = 'flex'; initSnake();
+        } else if(game === 'magnet') {
+            currentGame = "magnet"; document.getElementById('current-title').innerText = "極地磁鐵";
+            document.getElementById('game-magnet').style.display = 'flex'; initMagnet();
         }
     }
 
@@ -151,9 +148,11 @@
         document.getElementById('custom-modal').style.display = 'none';
         if(currentGame === '2048') init2048();
         else if(currentGame === 'snake') initSnake();
+        else if(currentGame === 'magnet') initMagnet();
     }
 
-    // --- 2048 邏輯 ---
+    // --- 2048 邏輯 (略，保持不變) ---
+    // [此處保留您原有的 2048 程式碼...]
     let b2048 = [], s2048 = 0;
     function init2048() {
         b2048 = Array(16).fill(0); s2048 = 0; gameActive = true;
@@ -218,16 +217,20 @@
         gameActive = false; openModal("2048 結束", "您的得分：" + s2048);
     }
 
-    // --- 貪食蛇 ---
-    let canvas, ctx, snake, food, dx, dy, sSnake;
+    // --- 貪食蛇 邏輯 (略，保持不變) ---
+    // [此處保留您原有的 貪食蛇 程式碼...]
+    let snake, food, dx, dy, sSnake;
     function initSnake() {
-        canvas = document.getElementById('snakeCanvas'); ctx = canvas.getContext('2d');
+        let canvas = document.getElementById('snakeCanvas'); 
+        let ctx = canvas.getContext('2d');
         snake = [{x: 200, y: 200}, {x: 190, y: 200}]; dx = 10; dy = 0; sSnake = 0;
         document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
         document.getElementById('score').innerText = 0; createFood();
         window.snakeInterval = setInterval(drawSnake, 100);
     }
     function drawSnake() {
+        let canvas = document.getElementById('snakeCanvas');
+        let ctx = canvas.getContext('2d');
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
         if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
             clearInterval(window.snakeInterval); openModal("遊戲結束", "您的得分：" + sSnake); return;
@@ -245,8 +248,76 @@
     }
     function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
 
+    // --- 極地磁鐵 邏輯 (新增) ---
+    let mMagnet, mObstacles, mGravity, mDirection, mScore;
+    function initMagnet() {
+        let canvas = document.getElementById('magnetCanvas');
+        mMagnet = { x: 50, y: 250, radius: 15, velocity: 0 };
+        mGravity = 0.25; mDirection = 1; mObstacles = []; mScore = 0; gameActive = true;
+        document.getElementById('best').innerText = localStorage.getItem('magnet_best') || 0;
+        document.getElementById('score').innerText = 0;
+        magnetLoop();
+    }
+
+    function magnetLoop() {
+        if(currentGame !== 'magnet') return;
+        let canvas = document.getElementById('magnetCanvas');
+        let ctx = canvas.getContext('2d');
+        
+        // 物理更新
+        // 物理更新
+        mMagnet.velocity += mGravity * mDirection;
+        mMagnet.velocity *= 0.98; // 加入這行：這會讓速度稍微衰減，更好控制
+        mMagnet.y += mMagnet.velocity;
+
+        // 碰撞邊界
+        if (mMagnet.y < 0 || mMagnet.y > canvas.height) {
+            gameActive = false; openModal("磁場潰散", "您的得分：" + mScore); return;
+        }
+
+        // 障礙物生成
+        if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < canvas.width - 200) {
+            let gap = 160, minH = 50;
+            let rY = Math.random() * (canvas.height - gap - minH*2) + minH;
+            mObstacles.push({ x: canvas.width, top: rY, bottom: rY + gap, passed: false });
+        }
+
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 更新與繪製障礙物
+        ctx.fillStyle = "#00f2ff";
+        mObstacles.forEach((obs, i) => {
+            obs.x -= 4;
+            ctx.fillRect(obs.x, 0, 50, obs.top);
+            ctx.fillRect(obs.x, obs.bottom, 50, canvas.height);
+
+            // 碰撞檢測
+            if (mMagnet.x + 10 > obs.x && mMagnet.x - 10 < obs.x + 50) {
+                if (mMagnet.y - 10 < obs.top || mMagnet.y + 10 > obs.bottom) {
+                    gameActive = false; openModal("撞擊障礙", "您的得分：" + mScore); return;
+                }
+            }
+            // 計分
+            if (!obs.passed && obs.x < mMagnet.x) {
+                mScore++; obs.passed = true;
+                document.getElementById('score').innerText = mScore;
+                let best = localStorage.getItem('magnet_best') || 0;
+                if(mScore > parseInt(best)) { localStorage.setItem('magnet_best', mScore); document.getElementById('best').innerText = mScore; }
+            }
+            if (obs.x < -60) mObstacles.splice(i, 1);
+        });
+
+        // 繪製磁鐵
+        ctx.beginPath(); ctx.arc(mMagnet.x, mMagnet.y, mMagnet.radius, 0, Math.PI*2);
+        ctx.fillStyle = mDirection > 0 ? "#ff4d4d" : "#4d79ff"; ctx.fill();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+
+        mainLoop = requestAnimationFrame(magnetLoop);
+    }
+
+    // --- 事件監聽 ---
     window.addEventListener('keydown', e => {
-        const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down'};
+        const m = {'ArrowLeft':'left','KeyA':'left','ArrowRight':'right','KeyD':'right','ArrowUp':'up','KeyW':'up','ArrowDown':'down','KeyS':'down','Space':'space'};
         if(m[e.code]) {
             e.preventDefault();
             if(currentGame === "2048") move2048(m[e.code]);
@@ -257,7 +328,14 @@
                 else if(k==='left' && dx===0){dx=-10;dy=0;}
                 else if(k==='right' && dx===0){dx=10;dy=0;}
             }
+            else if(currentGame === "magnet" && e.code === 'Space') {
+                mDirection *= -1;
+            }
         }
+    });
+
+    document.getElementById('magnetCanvas').addEventListener('mousedown', () => {
+        if(currentGame === "magnet") mDirection *= -1;
     });
 </script>
 </body>

@@ -44,7 +44,8 @@
         #game-2048 { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; position: relative; }
         #grid-base { position: relative; width: 100%; height: 100%; }
         .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
-        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; }
+        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; animation: appear 0.2s; }
+        @keyframes appear { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
 
         /* Canvas 類遊戲共通樣式 */
         #game-snake, #game-magnet, #game-defense, #game-breakout, #game-laser { display: none; flex-direction: column; align-items: center; }
@@ -202,6 +203,7 @@
     }
 
     function openModal(title, msg, actions = []) {
+        gameActive = false;
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-msg').innerText = msg;
         const container = document.getElementById('modal-actions');
@@ -217,7 +219,7 @@
         document.getElementById('custom-modal').style.display = 'flex';
     }
 
-    function closeModal() { document.getElementById('custom-modal').style.display = 'none'; }
+    function closeModal() { document.getElementById('custom-modal').style.display = 'none'; gameActive = true; }
 
     function restartCurrentGame() {
         closeModal();
@@ -285,7 +287,7 @@
             if (i % 4 < 3 && b2048[i] === b2048[i+1]) return;
             if (i < 12 && b2048[i] === b2048[i+4]) return;
         }
-        gameActive = false; openModal("遊戲結束", "得分：" + s2048);
+        openModal("遊戲結束", "得分：" + s2048);
     }
 
     // --- 貪食蛇 ---
@@ -306,7 +308,7 @@
         if (head.x === food.x && head.y === food.y) {
             sSnake += 10; document.getElementById('score').innerText = sSnake;
             let best = localStorage.getItem('snake_best') || 0;
-            if(sSnake > parseInt(best)) localStorage.setItem('snake_best', sSnake);
+            if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
             createFood();
         } else snake.pop();
         ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
@@ -335,28 +337,30 @@
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 500);
 
-        bBall.x += bBall.dx; bBall.y += bBall.dy;
-        if(bBall.x + bBall.r > 400 || bBall.x - bBall.r < 0) bBall.dx *= -1;
-        if(bBall.y - bBall.r < 0) bBall.dy *= -1;
-        if(bBall.y + bBall.r > 480 && bBall.x > bPaddle.x && bBall.x < bPaddle.x + bPaddle.w) {
-            bBall.dy = -Math.abs(bBall.dy) * 1.02;
-            bBall.dx += (bBall.x - (bPaddle.x + bPaddle.w/2)) / 8;
-        }
-        if(bBall.y > 500) { openModal("挑戰失敗", "得分：" + bScore); return; }
-
-        let activeCount = 0;
-        bBricks.forEach(b => {
-            if(b.active) {
-                activeCount++;
-                if(bBall.x > b.x && bBall.x < b.x + b.w && bBall.y - bBall.r < b.y + b.h && bBall.y + bBall.r > b.y) {
-                    b.active = false; bBall.dy *= -1; bScore += 20;
-                    document.getElementById('score').innerText = bScore;
-                    for(let i=0; i<6; i++) bParticles.push({x: b.x+b.w/2, y: b.y+b.h/2, dx: (Math.random()-0.5)*6, dy: (Math.random()-0.5)*6, life: 25});
-                }
-                ctx.fillStyle = "#8ab4f8"; ctx.fillRect(b.x, b.y, b.w, b.h);
+        if(gameActive) {
+            bBall.x += bBall.dx; bBall.y += bBall.dy;
+            if(bBall.x + bBall.r > 400 || bBall.x - bBall.r < 0) bBall.dx *= -1;
+            if(bBall.y - bBall.r < 0) bBall.dy *= -1;
+            if(bBall.y + bBall.r > 480 && bBall.x > bPaddle.x && bBall.x < bPaddle.x + bPaddle.w) {
+                bBall.dy = -Math.abs(bBall.dy) * 1.02;
+                bBall.dx += (bBall.x - (bPaddle.x + bPaddle.w/2)) / 8;
             }
-        });
-        if(activeCount === 0) { openModal("完美清空！", "得分：" + bScore); return; }
+            if(bBall.y > 500) { openModal("挑戰失敗", "得分：" + bScore); return; }
+
+            let activeCount = 0;
+            bBricks.forEach(b => {
+                if(b.active) {
+                    activeCount++;
+                    if(bBall.x > b.x && bBall.x < b.x + b.w && bBall.y - bBall.r < b.y + b.h && bBall.y + bBall.r > b.y) {
+                        b.active = false; bBall.dy *= -1; bScore += 20;
+                        document.getElementById('score').innerText = bScore;
+                        for(let i=0; i<6; i++) bParticles.push({x: b.x+b.w/2, y: b.y+b.h/2, dx: (Math.random()-0.5)*6, dy: (Math.random()-0.5)*6, life: 25});
+                    }
+                    ctx.fillStyle = "#8ab4f8"; ctx.fillRect(b.x, b.y, b.w, b.h);
+                }
+            });
+            if(activeCount === 0) { openModal("完美清空！", "得分：" + bScore); return; }
+        }
 
         bParticles.forEach((p, i) => {
             p.x += p.dx; p.y += p.dy; p.life--;
@@ -369,7 +373,7 @@
         ctx.fillStyle = "var(--accent)"; ctx.fillRect(bPaddle.x, 480, bPaddle.w, bPaddle.h);
         
         let best = localStorage.getItem('breakout_best') || 0;
-        if(bScore > parseInt(best)) { localStorage.setItem('breakout_best', bScore); }
+        if(bScore > parseInt(best)) { localStorage.setItem('breakout_best', bScore); document.getElementById('best').innerText = bScore; }
 
         mainLoop = requestAnimationFrame(breakoutLoop);
     }
@@ -378,7 +382,7 @@
     let lMirrors, lGoal, lEmitter;
     function initLaser() {
         lEmitter = { x: 0, y: 2 }; 
-        lGoal = { x: 4, y: 2 }; // 固定目標在 (4, 2)
+        lGoal = { x: 4, y: 2 }; 
         lMirrors = Array(25).fill(null);
         document.getElementById('best').innerText = "-";
         drawLaserGame();
@@ -391,7 +395,6 @@
             const y = Math.floor((e.clientY - rect.top) / (canvas.clientHeight / 5));
             const idx = y * 5 + x;
             
-            // 點擊邏輯：空 -> 45度 -> 135度 -> 空
             if(lMirrors[idx] === null) lMirrors[idx] = 45;
             else if(lMirrors[idx] === 45) lMirrors[idx] = 135;
             else lMirrors[idx] = null;
@@ -405,7 +408,6 @@
         const ctx = canvas.getContext('2d');
         const sz = 80;
         
-        // 1. 背景與網格
         ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,400,400);
         ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
         for(let i=0; i<=5; i++) { 
@@ -413,15 +415,12 @@
             ctx.beginPath(); ctx.moveTo(0, i*sz); ctx.lineTo(400, i*sz); ctx.stroke();
         }
 
-        // 2. 繪製「黃色」目標 (修正看不到問題)
         ctx.save();
-        ctx.fillStyle = "#ffd700"; // 金黃色
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#ffd700";
+        ctx.fillStyle = "#ffd700"; 
+        ctx.shadowBlur = 15; ctx.shadowColor = "#ffd700";
         ctx.fillRect(lGoal.x * sz + 20, lGoal.y * sz + 20, 40, 40);
         ctx.restore();
 
-        // 3. 繪製鏡子
         lMirrors.forEach((m, i) => {
             if(m) {
                 const x = (i % 5) * sz, y = Math.floor(i / 5) * sz;
@@ -432,12 +431,10 @@
             }
         });
 
-        // 4. 繪製雷射光束
         ctx.beginPath(); 
         ctx.strokeStyle = "#ff5252"; 
         ctx.lineWidth = 4;
-        ctx.shadowBlur = 10; 
-        ctx.shadowColor = "#ff5252"; 
+        ctx.shadowBlur = 10; ctx.shadowColor = "#ff5252"; 
         ctx.moveTo(0, lEmitter.y * sz + sz/2);
         
         traceLaser(0, lEmitter.y * sz + sz/2, 1, 0, 0);
@@ -447,45 +444,46 @@
     }
 
     function traceLaser(x, y, dx, dy, step) {
-        if(step > 15) return; 
+        if(step > 25) return; 
         const sz = 80;
-        let nx = x + dx * 400, ny = y + dy * 400;
-        let hitMirror = false;
+        const ctx = document.getElementById('laserCanvas').getContext('2d');
+        let nx = x + dx * 600, ny = y + dy * 600;
+        let hitMirrorIdx = -1;
+        let minDist = 1000;
 
         for(let i=0; i<25; i++) {
             if(lMirrors[i]) {
                 const mx = (i % 5) * sz, my = Math.floor(i / 5) * sz;
                 const cx = mx + sz/2, cy = my + sz/2;
                 
-                if(dx !== 0 && Math.abs(y-cy) < 5 && ((dx>0 && x<cx)||(dx<0 && x>cx))) {
-                    nx = cx; ny = cy; hitMirror = true;
-                    const ctx = document.getElementById('laserCanvas').getContext('2d');
-                    ctx.lineTo(nx, ny);
-                    let ndx = (lMirrors[i] === 45) ? -dy : dy;
-                    let ndy = (lMirrors[i] === 45) ? -dx : dx;
-                    traceLaser(nx, ny, ndx, ndy, step + 1); 
-                    break;
-                } else if(dy !== 0 && Math.abs(x-cx) < 5 && ((dy>0 && y<cy)||(dy<0 && y>cy))) {
-                    nx = cx; ny = cy; hitMirror = true;
-                    const ctx = document.getElementById('laserCanvas').getContext('2d');
-                    ctx.lineTo(nx, ny);
-                    let ndx = (lMirrors[i] === 45) ? -dy : dy;
-                    let ndy = (lMirrors[i] === 45) ? -dx : dx;
-                    traceLaser(nx, ny, ndx, ndy, step + 1); 
-                    break;
+                let dist = -1;
+                if(dx > 0 && Math.abs(y-cy) < 2 && cx > x) dist = cx - x;
+                else if(dx < 0 && Math.abs(y-cy) < 2 && cx < x) dist = x - cx;
+                else if(dy > 0 && Math.abs(x-cx) < 2 && cy > y) dist = cy - y;
+                else if(dy < 0 && Math.abs(x-cx) < 2 && cy < y) dist = y - cy;
+
+                if(dist > 0 && dist < minDist) {
+                    minDist = dist;
+                    hitMirrorIdx = i;
                 }
             }
         }
 
-        if(!hitMirror) {
-            const ctx = document.getElementById('laserCanvas').getContext('2d');
+        if(hitMirrorIdx !== -1) {
+            nx = (hitMirrorIdx % 5) * sz + sz/2;
+            ny = Math.floor(hitMirrorIdx / 5) * sz + sz/2;
             ctx.lineTo(nx, ny);
-            // 判定是否碰到黃色目標
-            if(Math.abs(nx-(lGoal.x*sz+sz/2)) < 30 && Math.abs(ny-(lGoal.y*sz+sz/2)) < 30) {
-                if(gameActive) { 
-                    gameActive = false; 
-                    setTimeout(() => openModal("精準命中！", "光束成功抵達黃色目標"), 100); 
-                }
+            let ndx = (lMirrors[hitMirrorIdx] === 45) ? -dy : dy;
+            let ndy = (lMirrors[hitMirrorIdx] === 45) ? -dx : dx;
+            traceLaser(nx, ny, ndx, ndy, step + 1);
+        } else {
+            ctx.lineTo(nx, ny);
+            // 判定目標
+            let gx = lGoal.x * sz + sz/2, gy = lGoal.y * sz + sz/2;
+            if(dx !== 0 && Math.abs(y-gy) < 20 && ((dx>0 && x<gx)||(dx<0 && x>gx))) {
+                if(gameActive) openModal("精準命中！", "光束成功抵達黃色目標");
+            } else if(dy !== 0 && Math.abs(x-gx) < 20 && ((dy>0 && y<gy)||(dy<0 && y>gy))) {
+                if(gameActive) openModal("精準命中！", "光束成功抵達黃色目標");
             }
         }
     }
@@ -501,16 +499,20 @@
     function magnetLoop() {
         if(currentGame !== 'magnet') return;
         let canvas = document.getElementById('magnetCanvas'); let ctx = canvas.getContext('2d');
-        mMagnet.velocity += 0.22 * mDirection; mMagnet.velocity *= 0.98; mMagnet.y += mMagnet.velocity;
-        if (mMagnet.y < 0 || mMagnet.y > canvas.height) { openModal("磁場潰散", "得分：" + mScore); return; }
-        if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < 180) {
-            let gap = 170, rY = Math.random() * (canvas.height - 270) + 50;
-            mObstacles.push({ x: 400, top: rY, bottom: rY + gap, passed: false });
+        
+        if(gameActive) {
+            mMagnet.velocity += 0.22 * mDirection; mMagnet.velocity *= 0.98; mMagnet.y += mMagnet.velocity;
+            if (mMagnet.y < 0 || mMagnet.y > canvas.height) { openModal("磁場潰散", "得分：" + mScore); return; }
+            if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < 180) {
+                let gap = 170, rY = Math.random() * (canvas.height - 270) + 50;
+                mObstacles.push({ x: 400, top: rY, bottom: rY + gap, passed: false });
+            }
         }
+        
         ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 500);
         ctx.fillStyle = "#00f2ff";
         mObstacles.forEach((obs, i) => {
-            obs.x -= 3.5;
+            if(gameActive) obs.x -= 3.5;
             ctx.fillRect(obs.x, 0, 50, obs.top); ctx.fillRect(obs.x, obs.bottom, 50, 500);
             if (mMagnet.x + 10 > obs.x && mMagnet.x - 10 < obs.x + 50) {
                 if (mMagnet.y - 10 < obs.top || mMagnet.y + 10 > obs.bottom) { openModal("任務失敗", "得分：" + mScore); return; }
@@ -520,6 +522,10 @@
         });
         ctx.beginPath(); ctx.arc(mMagnet.x, mMagnet.y, 15, 0, Math.PI*2);
         ctx.fillStyle = mDirection > 0 ? "#ff4d4d" : "#4d79ff"; ctx.fill();
+        
+        let best = localStorage.getItem('magnet_best') || 0;
+        if(mScore > parseInt(best)) { localStorage.setItem('magnet_best', mScore); document.getElementById('best').innerText = mScore; }
+
         mainLoop = requestAnimationFrame(magnetLoop);
     }
 
@@ -535,26 +541,34 @@
         if(currentGame !== 'defense') return;
         const canvas = document.getElementById('defenseCanvas'); const ctx = canvas.getContext('2d');
         ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 400);
-        if (Math.random() < 0.02) {
-            let angle = Math.random() * Math.PI * 2;
-            dEnemies.push({ x: 200 + Math.cos(angle)*200, y: 200 + Math.sin(angle)*200, color: Math.floor(Math.random()*4) });
-        }
-        dEnemies.forEach((en, i) => {
-            let dx = 200-en.x, dy = 200-en.y, dist = Math.sqrt(dx*dx+dy*dy);
-            en.x += dx/dist * 2.5; en.y += dy/dist * 2.5;
-            ctx.fillStyle = D_COLORS[en.color]; ctx.beginPath(); ctx.arc(en.x, en.y, 8, 0, 7); ctx.fill();
-            if (dist < 60) {
-                let hitAngle = (Math.atan2(en.y-200, en.x-200)*180/Math.PI + 360 + 45 - dRot) % 360;
-                let side = Math.floor(hitAngle/90);
-                if ([1,2,3,0][side] === en.color) { dDefScore += 10; document.getElementById('score').innerText = dDefScore; }
-                else { dHealth--; if(dHealth <=0) openModal("防線潰散", "得分："+dDefScore); }
-                dEnemies.splice(i, 1);
+        
+        if(gameActive) {
+            if (Math.random() < 0.02) {
+                let angle = Math.random() * Math.PI * 2;
+                dEnemies.push({ x: 200 + Math.cos(angle)*200, y: 200 + Math.sin(angle)*200, color: Math.floor(Math.random()*4) });
             }
-        });
+            dEnemies.forEach((en, i) => {
+                let dx = 200-en.x, dy = 200-en.y, dist = Math.sqrt(dx*dx+dy*dy);
+                en.x += dx/dist * 2.5; en.y += dy/dist * 2.5;
+                ctx.fillStyle = D_COLORS[en.color]; ctx.beginPath(); ctx.arc(en.x, en.y, 8, 0, 7); ctx.fill();
+                if (dist < 60) {
+                    let hitAngle = (Math.atan2(en.y-200, en.x-200)*180/Math.PI + 360 + 45 - dRot) % 360;
+                    let side = Math.floor(hitAngle/90);
+                    if ([1,2,3,0][side] === en.color) { dDefScore += 10; document.getElementById('score').innerText = dDefScore; }
+                    else { dHealth--; if(dHealth <=0) openModal("防線潰散", "得分："+dDefScore); }
+                    dEnemies.splice(i, 1);
+                }
+            });
+        }
+        
         ctx.save(); ctx.translate(200, 200); ctx.rotate(dRot * Math.PI/180);
         for(let i=0; i<4; i++) { ctx.strokeStyle = D_COLORS[i]; ctx.lineWidth=10; ctx.beginPath(); ctx.moveTo(-50, -50); ctx.lineTo(50, -50); ctx.stroke(); ctx.rotate(Math.PI/2); }
         ctx.restore();
-        ctx.fillStyle="white"; ctx.fillText("❤️".repeat(dHealth), 20, 30);
+        ctx.fillStyle="white"; ctx.font = "20px Arial"; ctx.fillText("❤️".repeat(dHealth), 20, 30);
+        
+        let best = localStorage.getItem('defense_best') || 0;
+        if(dDefScore > parseInt(best)) { localStorage.setItem('defense_best', dDefScore); document.getElementById('best').innerText = dDefScore; }
+
         mainLoop = requestAnimationFrame(defenseLoop);
     }
 
@@ -595,7 +609,12 @@
             if (dgMap[target] === 2) dgHP = Math.min(100, dgHP + 20);
             dgPath.push(target);
             if (dgHP <= 0) openModal("冒險失敗", "生命值耗盡");
-            else if (dgMap[target] === 3) openModal("成功逃脫", "探索率：" + Math.round(dgPath.length/25*100) + "%");
+            else if (dgMap[target] === 3) {
+                let score = Math.round(dgPath.length/25*100);
+                let best = localStorage.getItem('dungeon_best') || 0;
+                if(score > parseInt(best)) { localStorage.setItem('dungeon_best', score); document.getElementById('best').innerText = score; }
+                openModal("成功逃脫", "探索率：" + score + "%");
+            }
             updateDungeonUI();
         }
     }
@@ -622,9 +641,8 @@
         }
     });
 
-    // 打磚塊滑鼠控制
     window.addEventListener('mousemove', e => {
-        if(currentGame === 'breakout') {
+        if(currentGame === 'breakout' && gameActive) {
             const rect = document.getElementById('breakoutCanvas').getBoundingClientRect();
             let mouseX = e.clientX - rect.left;
             bPaddle.x = Math.max(0, Math.min(400 - bPaddle.w, mouseX - bPaddle.w/2));

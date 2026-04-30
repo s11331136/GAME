@@ -3,23 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲倉庫</title>
+    <title>遊戲開發平台 - 穩定修復版</title>
     <style>
-        :root { 
-            --sidebar-width: 260px; 
-            --dark-bg: #1e1f20; 
-            --item-hover: #333537; 
-            --accent: #8ab4f8; 
-            --light-text: #e3e3e3; 
-            --danger: #ff5252;
-        }
+        :root { --sidebar-width: 260px; --dark-bg: #1e1f20; --item-hover: #333537; --accent: #8ab4f8; --light-text: #e3e3e3; }
         body { font-family: '微軟正黑體', sans-serif; margin: 0; display: flex; height: 100vh; background: #131314; color: var(--light-text); overflow: hidden; }
 
         /* --- 側邊選單 --- */
         #sidebar { 
             width: var(--sidebar-width); background: var(--dark-bg); transition: 0.3s; 
             border-right: 1px solid #444; z-index: 100; flex-shrink: 0;
-            overflow-y: auto; 
+            overflow: hidden; 
         }
         #sidebar.collapsed { width: 0; border: none; visibility: hidden; opacity: 0; }
         .sidebar-content { padding: 20px; width: var(--sidebar-width); box-sizing: border-box; }
@@ -32,54 +25,32 @@
         #main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
         #header { background: #131314; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .nav-left { display: flex; align-items: center; gap: 15px; }
-        #menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; flex-shrink: 0; }
+        #menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; border-radius: 50%; width: 45px; height: 45px; }
         #menu-toggle:hover { background: var(--item-hover); }
         .score-box { display: flex; gap: 10px; }
         .score-item { font-size: 0.9rem; background: #282a2d; padding: 8px 15px; border-radius: 10px; border: 1px solid #444; min-width: 80px; text-align: center; }
 
         /* --- 遊戲顯示區域 --- */
-        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; position: relative; overflow-y: auto; }
-        
-        /* 2048 樣式 */
+        #game-display { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; position: relative; }
+        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; height: auto; }
+
+        /* 2048 專用樣式 */
         #game-2048 { display: none; background: #bbada0; width: 320px; height: 320px; padding: 10px; border-radius: 6px; position: relative; }
         #grid-base { position: relative; width: 100%; height: 100%; }
         .cell { width: 70px; height: 70px; background: rgba(238, 228, 218, 0.35); border-radius: 3px; position: absolute; }
-        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; animation: appear 0.2s; }
-        @keyframes appear { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        .tile { width: 70px; height: 70px; border-radius: 3px; position: absolute; display: flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: #776e65; transition: all 0.12s ease-in-out; z-index: 10; }
 
-        /* Canvas 類遊戲共通樣式 */
-        #game-snake, #game-magnet, #game-defense, #game-breakout, #game-laser { display: none; flex-direction: column; align-items: center; }
-        canvas { border: 5px solid #333; background-color: #000; border-radius: 5px; max-width: 100%; cursor: crosshair; }
-
-        /* 一筆畫地牢樣式 */
-        #game-dungeon { display: none; flex-direction: column; align-items: center; }
-        #dungeon-board { 
-            display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); 
-            gap: 8px; background: #282a2d; padding: 15px; border-radius: 12px; border: 2px solid #444;
-        }
-        .dg-cell { 
-            width: 60px; height: 60px; background: #3c4043; border-radius: 8px;
-            display: flex; justify-content: center; align-items: center; font-size: 1.8rem;
-            cursor: pointer; transition: 0.2s; position: relative; box-sizing: border-box;
-        }
-        .dg-cell:hover { background: #4f5357; }
-        .dg-cell.visited { background: #394457; border: 2px solid var(--accent); }
-        .dg-cell.current { background: var(--accent); transform: scale(1.08); z-index: 2; box-shadow: 0 0 15px var(--accent); }
-        .dg-cell.exit { background: #ffd740; box-shadow: 0 0 10px #ffd740; }
-
-        /* 彈窗樣式 */
+        /* 彈窗 */
         #custom-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #2c2c2c; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); box-shadow: 0 0 30px rgba(138, 180, 248, 0.3); }
-        .modal-btn { background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; margin: 10px; transition: 0.2s; }
-        .modal-btn:hover { opacity: 0.8; transform: scale(1.05); }
-        .modal-btn.secondary { background: #555; color: white; }
+        .modal-content { background: #2c2c2c; padding: 40px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); }
+        .modal-btn { background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; margin: 10px; }
 
-        /* 2048 色彩數值 */
+        /* 2048 色彩清單 */
         .n2 { background: #eee4da; } .n4 { background: #ede0c8; } .n8 { background: #f2b179; color: white; }
         .n16 { background: #f59563; color: white; } .n32 { background: #f67c5f; color: white; } .n64 { background: #f65e3b; color: white; }
-        .n128 { background: #edcf72; color: white; font-size: 22px; } .n256 { background: #edcc61; color: white; font-size: 22px; }
-        .n512 { background: #edc850; color: white; font-size: 22px; } .n1024 { background: #edc53f; color: white; font-size: 18px; }
-        .n2048 { background: #edc22e; color: white; font-size: 18px; box-shadow: 0 0 15px 5px rgba(243, 215, 116, 0.4); }
+        .n128 { background: #edcf72; color: white; font-size: 22px; } .n2048 { background: #edc22e; color: white; box-shadow: 0 0 15px rgba(243, 215, 116, 0.4); }
+
+        .info-text { color: #888; margin-top: 10px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -95,16 +66,15 @@
 <nav id="sidebar">
     <div class="sidebar-content">
         <h2 style="color: var(--accent);">遊戲倉庫</h2>
-        <div class="menu-category">益智解謎</div>
+        <div class="menu-category">益智系列</div>
         <div class="menu-item" id="btn-2048" onclick="switchGame('2048')"><span>🎮</span> 2048</div>
         <div class="menu-item" id="btn-snake" onclick="switchGame('snake')"><span>🐍</span> 貪食蛇</div>
-        <div class="menu-item" id="btn-dungeon" onclick="switchGame('dungeon')"><span>🗝️</span> 一筆畫地牢</div>
-        <div class="menu-item" id="btn-laser" onclick="switchGame('laser')"><span>⚡</span> 雷射導引</div>
-        <div class="menu-category">動作反饋</div>
-        <div class="menu-item" id="btn-breakout" onclick="switchGame('breakout')"><span>🎾</span> 極簡打磚塊</div>
+        <div class="menu-item" id="btn-pathfinder" onclick="switchGame('pathfinder')"><span>🗡️</span> 一筆畫地牢</div>
+        <div class="menu-category">動作系列</div>
         <div class="menu-item" id="btn-magnet" onclick="switchGame('magnet')"><span>🧲</span> 極地磁鐵</div>
         <div class="menu-item" id="btn-defense" onclick="switchGame('defense')"><span>🛡️</span> 色塊防線</div>
-        <div class="menu-category">管理</div>
+        <div class="menu-item" id="btn-bricks" onclick="switchGame('bricks')"><span>🧱</span> 極簡打磚塊</div>
+        <div class="menu-category">設定</div>
         <div class="menu-item" onclick="localStorage.clear(); location.reload();"><span>🗑️</span> 清除紀錄</div>
     </div>
 </nav>
@@ -113,7 +83,7 @@
     <header id="header">
         <div class="nav-left">
             <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
-            <div id="current-title" style="font-size: 1.2rem; font-weight: bold;">首頁</div>
+            <div id="current-title" style="font-size: 1.2rem; font-weight: bold;">請選擇遊戲</div>
         </div>
         <div class="score-box">
             <div class="score-item">分數: <span id="score">0</span></div>
@@ -122,30 +92,21 @@
     </header>
 
     <div id="game-display">
-        <h3 id="welcome-msg">← 點擊左側選單開始遊戲</h3>
-        
+        <h3 id="welcome-msg">← 點擊選單開始遊戲</h3>
         <div id="game-2048"><div id="grid-base"></div></div>
-        <div id="game-snake"><canvas id="snakeCanvas" width="400" height="400"></canvas></div>
-        <div id="game-magnet"><canvas id="magnetCanvas" width="400" height="500"></canvas></div>
-        <div id="game-defense">
+        <div id="game-snake" style="display:none;"><canvas id="snakeCanvas" width="400" height="400"></canvas></div>
+        <div id="game-magnet" style="display:none;"><canvas id="magnetCanvas" width="400" height="500"></canvas></div>
+        <div id="game-defense" style="display:none; flex-direction: column; align-items: center;">
             <canvas id="defenseCanvas" width="400" height="400"></canvas>
-            <p style="color: #888; margin-top: 15px;">使用 A / D 或 方向鍵旋轉方塊</p>
+            <p style="color: #888; margin-top: 15px;">A / D 旋轉方塊 | 對準落下的顏色</p>
         </div>
-        <div id="game-dungeon">
-            <div id="dungeon-board"></div>
-            <div id="dungeon-stats" style="margin-top: 15px; text-align: center;">
-                <div style="margin-bottom: 5px;">生命值: <span id="dg-hp">100</span> / 100</div>
-                <progress id="hp-bar" value="100" max="100" style="width: 250px; height: 15px; accent-color: #ff5252;"></progress>
-                <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
-                    <button class="modal-btn secondary" onclick="undoDungeon()" style="padding: 5px 15px; font-size: 0.8rem;">⬅️ 上一步</button>
-                    <button class="modal-btn secondary" onclick="initDungeon()" style="padding: 5px 15px; font-size: 0.8rem;">🔄 重置</button>
-                </div>
-            </div>
+        <div id="game-pathfinder" style="display:none; flex-direction: column; align-items: center;">
+            <canvas id="pathfinderCanvas" width="400" height="450"></canvas>
+            <p class="info-text">滑鼠拖動連線 | 需經過所有格子 | 怪物扣血、血瓶補血</p>
         </div>
-        <div id="game-breakout"><canvas id="breakoutCanvas" width="400" height="500"></canvas></div>
-        <div id="game-laser">
-            <canvas id="laserCanvas" width="400" height="400"></canvas>
-            <p style="color: #888; margin-top: 15px;">點擊格子放置/旋轉鏡子，讓光束擊中黃色目標</p>
+        <div id="game-bricks" style="display:none; flex-direction: column; align-items: center;">
+            <canvas id="bricksCanvas" width="400" height="500"></canvas>
+            <p class="info-text">滑鼠控制擋板移動</p>
         </div>
     </div>
 </div>
@@ -153,83 +114,73 @@
 <script>
     let currentGame = "", gameActive = false;
     let mainLoop; 
-    let hasWon2048 = false;
+    let snakeInterval; 
 
-    function toggleSidebar() { 
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 
     function switchGame(game) {
-        document.getElementById('welcome-msg').style.display = 'none';
-        ['game-2048', 'game-snake', 'game-magnet', 'game-defense', 'game-dungeon', 'game-breakout', 'game-laser'].forEach(id => {
-            document.getElementById(id).style.display = 'none';
-        });
-        
-        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-        const btn = document.getElementById('btn-' + game);
-        if(btn) btn.classList.add('active');
-        
-        if(window.snakeInterval) clearInterval(window.snakeInterval);
-        cancelAnimationFrame(mainLoop); // 徹底停止上一個遊戲的繪圖 Loop
+        gameActive = false;
+        cancelAnimationFrame(mainLoop); 
+        if(snakeInterval) clearInterval(snakeInterval);
         closeModal();
 
-        currentGame = game;
-        gameActive = true;
-        document.getElementById('score').innerText = "0";
+        document.getElementById('welcome-msg').style.display = 'none';
+        document.getElementById('game-2048').style.display = 'none';
+        document.getElementById('game-snake').style.display = 'none';
+        document.getElementById('game-magnet').style.display = 'none';
+        document.getElementById('game-defense').style.display = 'none';
+        document.getElementById('game-pathfinder').style.display = 'none';
+        document.getElementById('game-bricks').style.display = 'none';
+        
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('btn-' + game).classList.add('active');
 
+        currentGame = game;
         if(game === '2048') {
             document.getElementById('current-title').innerText = "2048";
-            document.getElementById('game-2048').style.display = 'block'; 
-            hasWon2048 = false; init2048();
+            document.getElementById('game-2048').style.display = 'block';
+            init2048();
         } else if(game === 'snake') {
             document.getElementById('current-title').innerText = "貪食蛇";
-            document.getElementById('game-snake').style.display = 'flex'; initSnake();
+            document.getElementById('game-snake').style.display = 'block';
+            initSnake();
         } else if(game === 'magnet') {
             document.getElementById('current-title').innerText = "極地磁鐵";
-            document.getElementById('game-magnet').style.display = 'flex'; initMagnet();
+            document.getElementById('game-magnet').style.display = 'block';
+            initMagnet();
         } else if(game === 'defense') {
             document.getElementById('current-title').innerText = "色塊防線";
-            document.getElementById('game-defense').style.display = 'flex'; initDefense();
-        } else if(game === 'dungeon') {
+            document.getElementById('game-defense').style.display = 'flex';
+            initDefense();
+        } else if(game === 'pathfinder') {
             document.getElementById('current-title').innerText = "一筆畫地牢";
-            document.getElementById('game-dungeon').style.display = 'flex'; initDungeon();
-        } else if(game === 'breakout') {
+            document.getElementById('game-pathfinder').style.display = 'flex';
+            initPathfinder();
+        } else if(game === 'bricks') {
             document.getElementById('current-title').innerText = "極簡打磚塊";
-            document.getElementById('game-breakout').style.display = 'flex'; initBreakout();
-        } else if(game === 'laser') {
-            document.getElementById('current-title').innerText = "雷射導引";
-            document.getElementById('game-laser').style.display = 'flex'; initLaser();
+            document.getElementById('game-bricks').style.display = 'flex';
+            initBricks();
         }
     }
 
-    function openModal(title, msg, actions = []) {
-        gameActive = false; // 彈窗出現時暫停遊戲邏輯
+    function openModal(title, msg) {
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-msg').innerText = msg;
         const container = document.getElementById('modal-actions');
-        container.innerHTML = '';
-        if (actions.length === 0) actions = [{ text: "再次挑戰", callback: restartCurrentGame, class: "" }];
-        actions.forEach(act => {
-            const btn = document.createElement('button');
-            btn.className = 'modal-btn ' + (act.class || '');
-            btn.innerText = act.text;
-            btn.onclick = act.callback;
-            container.appendChild(btn);
-        });
+        container.innerHTML = `<button class="modal-btn" onclick="restartCurrentGame()">再次挑戰</button>`;
         document.getElementById('custom-modal').style.display = 'flex';
     }
 
-    function closeModal() { document.getElementById('custom-modal').style.display = 'none'; gameActive = true; }
+    function closeModal() { document.getElementById('custom-modal').style.display = 'none'; }
+    function restartCurrentGame() { switchGame(currentGame); }
 
-    function restartCurrentGame() {
-        closeModal();
-        switchGame(currentGame);
-    }
-
-    // --- 2048 核心 ---
+    // ==========================================
+    // 2048 邏輯 (修復版：確保滑動流暢)
+    // ==========================================
     let b2048 = [], s2048 = 0;
     function init2048() {
-        b2048 = Array(16).fill(0); s2048 = 0;
+        b2048 = Array(16).fill(0); s2048 = 0; gameActive = true;
+        document.getElementById('score').innerText = 0;
         document.getElementById('best').innerText = localStorage.getItem('2048_best') || 0;
         const grid = document.getElementById('grid-base'); grid.innerHTML = '';
         for (let i = 0; i < 16; i++) {
@@ -250,411 +201,278 @@
         b2048.forEach((val, i) => {
             if(val > 0) {
                 let t = document.createElement('div');
-                t.className = `tile n${val > 2048 ? 2048 : val}`;
+                t.className = `tile n${val <= 2048 ? val : 2048}`;
                 t.innerText = val;
                 t.style.left = (i % 4) * 78 + 'px'; t.style.top = Math.floor(i / 4) * 78 + 'px';
                 grid.appendChild(t);
             }
         });
         document.getElementById('score').innerText = s2048;
-        let best = localStorage.getItem('2048_best') || 0;
-        if(s2048 > parseInt(best)) { localStorage.setItem('2048_best', s2048); document.getElementById('best').innerText = s2048; }
-        if (!hasWon2048 && b2048.includes(2048)) {
-            hasWon2048 = true;
-            openModal("🏆 傳奇誕生！", "成功合成了 2048 方塊！", [{ text: "繼續", callback: closeModal, class: "secondary" }]);
-        }
-        check2048GameOver();
+        if(s2048 > (localStorage.getItem('2048_best')||0)) localStorage.setItem('2048_best', s2048);
     }
     function move2048(dir) {
-        if(currentGame !== "2048" || !gameActive) return;
-        let old = [...b2048];
-        for (let i = 0; i < 4; i++) {
-            let row = [], indices = [];
-            for (let j = 0; j < 4; j++) {
+        if(!gameActive || currentGame !== '2048') return;
+        let old = JSON.stringify(b2048);
+        for(let i=0; i<4; i++) {
+            let row = [];
+            for(let j=0; j<4; j++) {
                 let idx = (dir==='left')? i*4+j : (dir==='right')? i*4+(3-j) : (dir==='up')? j*4+i : (3-j)*4+i;
-                indices.push(idx); row.push(b2048[idx]);
+                row.push(b2048[idx]);
             }
-            let arr = row.filter(v => v !== 0);
-            for (let j = 0; j < arr.length - 1; j++) { if (arr[j] === arr[j+1]) { arr[j] *= 2; s2048 += arr[j]; arr.splice(j+1, 1); } }
-            while (arr.length < 4) arr.push(0);
-            indices.forEach((idx, j) => b2048[idx] = arr[j]);
+            let res = slideRow(row);
+            for(let j=0; j<4; j++) {
+                let idx = (dir==='left')? i*4+j : (dir==='right')? i*4+(3-j) : (dir==='up')? j*4+i : (3-j)*4+i;
+                b2048[idx] = res[j];
+            }
         }
-        if (JSON.stringify(old) !== JSON.stringify(b2048)) spawn2048();
+        if(old !== JSON.stringify(b2048)) spawn2048();
+        check2048GameOver();
+    }
+    function slideRow(row) {
+        let arr = row.filter(v => v !== 0);
+        for(let i=0; i<arr.length-1; i++) { if(arr[i]===arr[i+1]) { arr[i]*=2; s2048+=arr[i]; arr.splice(i+1, 1); } }
+        while(arr.length<4) arr.push(0); return arr;
     }
     function check2048GameOver() {
-        if (b2048.includes(0)) return;
-        for (let i = 0; i < 16; i++) {
-            if (i % 4 < 3 && b2048[i] === b2048[i+1]) return;
-            if (i < 12 && b2048[i] === b2048[i+4]) return;
+        if(!b2048.includes(0)) {
+            let canMove = false;
+            for(let i=0; i<16; i++) {
+                if(i%4<3 && b2048[i]===b2048[i+1]) canMove = true;
+                if(i<12 && b2048[i]===b2048[i+4]) canMove = true;
+            }
+            if(!canMove) { gameActive = false; openModal("遊戲結束", "得分：" + s2048); }
         }
-        openModal("遊戲結束", "得分：" + s2048);
     }
 
-    // --- 貪食蛇 ---
+    // ==========================================
+    // 貪食蛇 邏輯
+    // ==========================================
     let snake, food, dx, dy, sSnake;
     function initSnake() {
         snake = [{x: 200, y: 200}, {x: 190, y: 200}]; dx = 10; dy = 0; sSnake = 0;
+        document.getElementById('score').innerText = 0;
         document.getElementById('best').innerText = localStorage.getItem('snake_best') || 0;
         createFood();
-        window.snakeInterval = setInterval(drawSnake, 100);
+        snakeInterval = setInterval(drawSnake, 100);
     }
     function drawSnake() {
-        let ctx = document.getElementById('snakeCanvas').getContext('2d');
+        let canvas = document.getElementById('snakeCanvas'); let ctx = canvas.getContext('2d');
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
         if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
-            clearInterval(window.snakeInterval); openModal("遊戲結束", "得分：" + sSnake); return;
+            clearInterval(snakeInterval); openModal("遊戲結束", "得分：" + sSnake); return;
         }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) {
-            sSnake += 10; document.getElementById('score').innerText = sSnake;
-            let best = localStorage.getItem('snake_best') || 0;
-            if(sSnake > parseInt(best)) { localStorage.setItem('snake_best', sSnake); document.getElementById('best').innerText = sSnake; }
+            sSnake += 1; document.getElementById('score').innerText = sSnake;
+            if(sSnake > (localStorage.getItem('snake_best')||0)) localStorage.setItem('snake_best', sSnake);
             createFood();
-        } else snake.pop();
+        } else { snake.pop(); }
         ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
         ctx.fillStyle = "#ff5252"; ctx.fillRect(food.x, food.y, 10, 10);
         ctx.fillStyle = "#8ab4f8"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10));
     }
     function createFood() { food = { x: Math.floor(Math.random()*39)*10, y: Math.floor(Math.random()*39)*10 }; }
 
-    // --- 極簡打磚塊 ---
-    let bBall, bPaddle, bBricks, bParticles, bScore;
-    function initBreakout() {
-        bBall = { x: 200, y: 400, dx: 3.5, dy: -3.5, r: 8 };
-        bPaddle = { x: 160, w: 80, h: 10 };
-        bBricks = []; bParticles = []; bScore = 0;
-        document.getElementById('best').innerText = localStorage.getItem('breakout_best') || 0;
-        for(let r=0; r<4; r++) {
-            for(let c=0; c<6; c++) {
-                bBricks.push({ x: c*65+10, y: r*25+50, w: 55, h: 15, active: true });
-            }
-        }
-        breakoutLoop();
-    }
-    function breakoutLoop() {
-        if(currentGame !== 'breakout') return;
-        const canvas = document.getElementById('breakoutCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 500);
-
-        if(gameActive) {
-            bBall.x += bBall.dx; bBall.y += bBall.dy;
-            if(bBall.x + bBall.r > 400 || bBall.x - bBall.r < 0) bBall.dx *= -1;
-            if(bBall.y - bBall.r < 0) bBall.dy *= -1;
-            if(bBall.y + bBall.r > 480 && bBall.x > bPaddle.x && bBall.x < bPaddle.x + bPaddle.w) {
-                bBall.dy = -Math.abs(bBall.dy) * 1.02;
-                bBall.dx += (bBall.x - (bPaddle.x + bPaddle.w/2)) / 8;
-            }
-            if(bBall.y > 500) { openModal("挑戰失敗", "得分：" + bScore); return; }
-
-            let activeCount = 0;
-            bBricks.forEach(b => {
-                if(b.active) {
-                    activeCount++;
-                    if(bBall.x > b.x && bBall.x < b.x + b.w && bBall.y - bBall.r < b.y + b.h && bBall.y + bBall.r > b.y) {
-                        b.active = false; bBall.dy *= -1; bScore += 20;
-                        document.getElementById('score').innerText = bScore;
-                        for(let i=0; i<6; i++) bParticles.push({x: b.x+b.w/2, y: b.y+b.h/2, dx: (Math.random()-0.5)*6, dy: (Math.random()-0.5)*6, life: 25});
-                    }
-                    ctx.fillStyle = "#8ab4f8"; ctx.fillRect(b.x, b.y, b.w, b.h);
-                }
-            });
-            if(activeCount === 0) { openModal("完美清空！", "得分：" + bScore); return; }
-        }
-
-        bParticles.forEach((p, i) => {
-            p.x += p.dx; p.y += p.dy; p.life--;
-            ctx.fillStyle = `rgba(138, 180, 248, ${p.life/25})`;
-            ctx.fillRect(p.x, p.y, 3, 3);
-            if(p.life <= 0) bParticles.splice(i, 1);
-        });
-
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(bBall.x, bBall.y, bBall.r, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "var(--accent)"; ctx.fillRect(bPaddle.x, 480, bPaddle.w, bPaddle.h);
-        
-        let best = localStorage.getItem('breakout_best') || 0;
-        if(bScore > parseInt(best)) { localStorage.setItem('breakout_best', bScore); document.getElementById('best').innerText = bScore; }
-
-        mainLoop = requestAnimationFrame(breakoutLoop);
-    }
-
-    // --- 雷射導引 ---
-    let lMirrors, lGoal, lEmitter;
-    function initLaser() {
-        lEmitter = { x: 0, y: 2 }; 
-        // 隨機金塊位置：避開發射器同一列
-        let gx = Math.floor(Math.random() * 4) + 1; // 1~4 欄
-        let gy = Math.floor(Math.random() * 5);     // 0~4 列
-        if(gx === lEmitter.x && gy === lEmitter.y) gx = 4; // 萬一撞車
-        
-        lGoal = { x: gx, y: gy }; 
-        lMirrors = Array(25).fill(null);
-        document.getElementById('best').innerText = "-";
-        drawLaserGame();
-        
-        const canvas = document.getElementById('laserCanvas');
-        canvas.onclick = (e) => {
-            if(currentGame !== 'laser') return;
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / (canvas.clientWidth / 5));
-            const y = Math.floor((e.clientY - rect.top) / (canvas.clientHeight / 5));
-            const idx = y * 5 + x;
-            
-            if(lMirrors[idx] === null) lMirrors[idx] = 45;
-            else if(lMirrors[idx] === 45) lMirrors[idx] = 135;
-            else lMirrors[idx] = null;
-            
-            drawLaserGame();
-        };
-    }
-
-    function drawLaserGame() {
-        const canvas = document.getElementById('laserCanvas');
-        const ctx = canvas.getContext('2d');
-        const sz = 80;
-        
-        ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,400,400);
-        ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
-        for(let i=0; i<=5; i++) { 
-            ctx.beginPath(); ctx.moveTo(i*sz, 0); ctx.lineTo(i*sz, 400); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i*sz); ctx.lineTo(400, i*sz); ctx.stroke();
-        }
-
-        ctx.save();
-        ctx.fillStyle = "#ffd700"; 
-        ctx.shadowBlur = 15; ctx.shadowColor = "#ffd700";
-        ctx.fillRect(lGoal.x * sz + 20, lGoal.y * sz + 20, 40, 40);
-        ctx.restore();
-
-        lMirrors.forEach((m, i) => {
-            if(m) {
-                const x = (i % 5) * sz, y = Math.floor(i / 5) * sz;
-                ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.beginPath();
-                if(m === 45) { ctx.moveTo(x+15, y+sz-15); ctx.lineTo(x+sz-15, y+15); }
-                else { ctx.moveTo(x+15, y+15); ctx.lineTo(x+sz-15, y+sz-15); }
-                ctx.stroke();
-            }
-        });
-
-        ctx.beginPath(); 
-        ctx.strokeStyle = "#ff5252"; 
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = 10; ctx.shadowColor = "#ff5252"; 
-        ctx.moveTo(0, lEmitter.y * sz + sz/2);
-        
-        traceLaser(0, lEmitter.y * sz + sz/2, 1, 0, 0);
-        
-        ctx.stroke(); 
-        ctx.shadowBlur = 0;
-    }
-
-    function traceLaser(x, y, dx, dy, step) {
-        if(step > 25) return; 
-        const sz = 80;
-        const ctx = document.getElementById('laserCanvas').getContext('2d');
-        let nx = x + dx * 600, ny = y + dy * 600;
-        let hitMirrorIdx = -1;
-        let minDist = 1000;
-
-        for(let i=0; i<25; i++) {
-            if(lMirrors[i]) {
-                const mx = (i % 5) * sz, my = Math.floor(i / 5) * sz;
-                const cx = mx + sz/2, cy = my + sz/2;
-                
-                let dist = -1;
-                if(dx > 0 && Math.abs(y-cy) < 2 && cx > x) dist = cx - x;
-                else if(dx < 0 && Math.abs(y-cy) < 2 && cx < x) dist = x - cx;
-                else if(dy > 0 && Math.abs(x-cx) < 2 && cy > y) dist = cy - y;
-                else if(dy < 0 && Math.abs(x-cx) < 2 && cy < y) dist = y - cy;
-
-                if(dist > 0 && dist < minDist) {
-                    minDist = dist;
-                    hitMirrorIdx = i;
-                }
-            }
-        }
-
-        if(hitMirrorIdx !== -1) {
-            nx = (hitMirrorIdx % 5) * sz + sz/2;
-            ny = Math.floor(hitMirrorIdx / 5) * sz + sz/2;
-            ctx.lineTo(nx, ny);
-            let ndx = (lMirrors[hitMirrorIdx] === 45) ? -dy : dy;
-            let ndy = (lMirrors[hitMirrorIdx] === 45) ? -dx : dx;
-            traceLaser(nx, ny, ndx, ndy, step + 1);
-        } else {
-            ctx.lineTo(nx, ny);
-            let gx = lGoal.x * sz + sz/2, gy = lGoal.y * sz + sz/2;
-            if(dx !== 0 && Math.abs(y-gy) < 20 && ((dx>0 && x<gx)||(dx<0 && x>gx))) {
-                if(gameActive) openModal("精準命中！", "光束成功抵達黃色目標");
-            } else if(dy !== 0 && Math.abs(x-gx) < 20 && ((dy>0 && y<gy)||(dy<0 && y>gy))) {
-                if(gameActive) openModal("精準命中！", "光束成功抵達黃色目標");
-            }
-        }
-    }
-
-    // --- 極地磁鐵 ---
-    let mMagnet, mObstacles, mDirection, mScore;
+    // ==========================================
+    // 極地磁鐵 邏輯
+    // ==========================================
+    let mMagnet, mObstacles, mGravity, mDirection, mScore;
     function initMagnet() {
         mMagnet = { x: 50, y: 250, radius: 15, velocity: 0 };
-        mDirection = 1; mObstacles = []; mScore = 0;
+        mGravity = 0.22; mDirection = 1; mObstacles = []; mScore = 0; gameActive = true;
+        document.getElementById('score').innerText = 0;
         document.getElementById('best').innerText = localStorage.getItem('magnet_best') || 0;
         magnetLoop();
     }
     function magnetLoop() {
         if(currentGame !== 'magnet') return;
         let canvas = document.getElementById('magnetCanvas'); let ctx = canvas.getContext('2d');
-        
-        if(gameActive) {
-            mMagnet.velocity += 0.22 * mDirection; mMagnet.velocity *= 0.98; mMagnet.y += mMagnet.velocity;
-            if (mMagnet.y < 0 || mMagnet.y > canvas.height) { openModal("磁場潰散", "得分：" + mScore); return; }
-            if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < 180) {
-                let gap = 170, rY = Math.random() * (canvas.height - 270) + 50;
-                mObstacles.push({ x: 400, top: rY, bottom: rY + gap, passed: false });
-            }
+        mMagnet.velocity += mGravity * mDirection; mMagnet.y += mMagnet.velocity;
+        if (mMagnet.y < 0 || mMagnet.y > canvas.height) { openModal("磁場潰散", "得分：" + mScore); return; }
+        if (mObstacles.length === 0 || mObstacles[mObstacles.length-1].x < canvas.width - 220) {
+            let gap = 160; let rY = Math.random() * (canvas.height - gap - 100) + 50;
+            mObstacles.push({ x: canvas.width, top: rY, bottom: rY + gap, passed: false });
         }
-        
-        ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 500);
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#00f2ff";
         mObstacles.forEach((obs, i) => {
-            if(gameActive) obs.x -= 3.5;
-            ctx.fillRect(obs.x, 0, 50, obs.top); ctx.fillRect(obs.x, obs.bottom, 50, 500);
+            obs.x -= 3.5;
+            ctx.fillRect(obs.x, 0, 50, obs.top);
+            ctx.fillRect(obs.x, obs.bottom, 50, canvas.height);
             if (mMagnet.x + 10 > obs.x && mMagnet.x - 10 < obs.x + 50) {
-                if (mMagnet.y - 10 < obs.top || mMagnet.y + 10 > obs.bottom) { openModal("任務失敗", "得分：" + mScore); return; }
+                if (mMagnet.y - 10 < obs.top || mMagnet.y + 10 > obs.bottom) { gameActive = false; openModal("任務失敗", "得分：" + mScore); return; }
             }
-            if (!obs.passed && obs.x < mMagnet.x) { mScore++; obs.passed = true; document.getElementById('score').innerText = mScore; }
+            if (!obs.passed && obs.x < mMagnet.x) {
+                mScore++; obs.passed = true; document.getElementById('score').innerText = mScore;
+                if(mScore > (localStorage.getItem('magnet_best')||0)) localStorage.setItem('magnet_best', mScore);
+            }
             if (obs.x < -60) mObstacles.splice(i, 1);
         });
-        ctx.beginPath(); ctx.arc(mMagnet.x, mMagnet.y, 15, 0, Math.PI*2);
+        ctx.beginPath(); ctx.arc(mMagnet.x, mMagnet.y, mMagnet.radius, 0, Math.PI*2);
         ctx.fillStyle = mDirection > 0 ? "#ff4d4d" : "#4d79ff"; ctx.fill();
-        
-        let best = localStorage.getItem('magnet_best') || 0;
-        if(mScore > parseInt(best)) { localStorage.setItem('magnet_best', mScore); document.getElementById('best').innerText = mScore; }
-
         mainLoop = requestAnimationFrame(magnetLoop);
     }
 
-    // --- 色塊防線 ---
-    let dRot, dEnemies, dHealth, dDefScore;
-    const D_COLORS = ['#ff4d4d', '#4d79ff', '#ffeb3b', '#4caf50'];
+    // ==========================================
+    // 色塊防線 邏輯
+    // ==========================================
+    let dRot, dEnemies, dScore, dHealth, dLastSpawn;
+    const D_COLORS = ['#ff4d4d', '#4d79ff', '#ffeb3b', '#4caf50']; 
     function initDefense() {
-        dRot = 0; dEnemies = []; dHealth = 3; dDefScore = 0;
+        dRot = 0; dEnemies = []; dScore = 0; dHealth = 3; dLastSpawn = Date.now(); gameActive = true;
+        document.getElementById('score').innerText = 0;
         document.getElementById('best').innerText = localStorage.getItem('defense_best') || 0;
         defenseLoop();
     }
     function defenseLoop() {
-        if(currentGame !== 'defense') return;
+        if(currentGame !== 'defense' || !gameActive) return;
         const canvas = document.getElementById('defenseCanvas'); const ctx = canvas.getContext('2d');
-        ctx.fillStyle = "black"; ctx.fillRect(0, 0, 400, 400);
-        
-        // 修正：只有當 gameActive 為真時才處理敵人邏輯，並確保只有單一 Loop 運行
-        if(gameActive) {
-            if (Math.random() < 0.02) {
-                let angle = Math.random() * Math.PI * 2;
-                dEnemies.push({ x: 200 + Math.cos(angle)*200, y: 200 + Math.sin(angle)*200, color: Math.floor(Math.random()*4) });
-            }
-            dEnemies.forEach((en, i) => {
-                let dx = 200-en.x, dy = 200-en.y, dist = Math.sqrt(dx*dx+dy*dy);
-                en.x += dx/dist * 2.5; en.y += dy/dist * 2.5;
-                ctx.fillStyle = D_COLORS[en.color]; ctx.beginPath(); ctx.arc(en.x, en.y, 8, 0, 7); ctx.fill();
-                if (dist < 60) {
-                    let hitAngle = (Math.atan2(en.y-200, en.x-200)*180/Math.PI + 360 + 45 - dRot) % 360;
-                    let side = Math.floor(hitAngle/90);
-                    if ([1,2,3,0][side] === en.color) { dDefScore += 10; document.getElementById('score').innerText = dDefScore; }
-                    else { dHealth--; if(dHealth <=0) openModal("防線潰散", "得分："+dDefScore); }
-                    dEnemies.splice(i, 1);
-                }
-            });
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        ctx.fillStyle = "black"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let now = Date.now();
+        let spawnRate = Math.max(1500 - dScore * 5, 700);
+        if (now - dLastSpawn > spawnRate) {
+            let angle = Math.random() * Math.PI * 2;
+            dEnemies.push({ x: cx + Math.cos(angle) * 250, y: cy + Math.sin(angle) * 250, colorIdx: Math.floor(Math.random() * 4), speed: 2 + (dScore/200) });
+            dLastSpawn = now;
         }
-        
-        ctx.save(); ctx.translate(200, 200); ctx.rotate(dRot * Math.PI/180);
-        for(let i=0; i<4; i++) { ctx.strokeStyle = D_COLORS[i]; ctx.lineWidth=10; ctx.beginPath(); ctx.moveTo(-50, -50); ctx.lineTo(50, -50); ctx.stroke(); ctx.rotate(Math.PI/2); }
+        dEnemies.forEach((enemy, index) => {
+            let dx = cx - enemy.x, dy = cy - enemy.y, dist = Math.sqrt(dx*dx + dy*dy);
+            enemy.x += (dx / dist) * enemy.speed; enemy.y += (dy / dist) * enemy.speed;
+            ctx.beginPath(); ctx.arc(enemy.x, enemy.y, 8, 0, Math.PI*2);
+            ctx.fillStyle = D_COLORS[enemy.colorIdx]; ctx.fill();
+            if (dist < 60) {
+                let enemyAngle = (Math.atan2(enemy.y - cy, enemy.x - cx) * 180 / Math.PI + 360) % 360;
+                let normalizedRot = ((dRot % 360) + 360) % 360;
+                let relativeAngle = (enemyAngle - normalizedRot + 360) % 360;
+                let hitSide; 
+                if (relativeAngle >= 315 || relativeAngle < 45) hitSide = 1; else if (relativeAngle >= 45 && relativeAngle < 135) hitSide = 2; else if (relativeAngle >= 135 && relativeAngle < 225) hitSide = 3; else hitSide = 0;
+                if (hitSide === enemy.colorIdx) { dScore += 10; document.getElementById('score').innerText = dScore; } else { dHealth--; if(dHealth <= 0) { gameActive = false; openModal("防線崩潰", "得分：" + dScore); } }
+                dEnemies.splice(index, 1);
+            }
+        });
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(dRot * Math.PI / 180);
+        const s = 45; ctx.lineWidth = 8;
+        D_COLORS.forEach((c, i) => {
+            ctx.strokeStyle = c; ctx.beginPath();
+            if(i===0) { ctx.moveTo(-s,-s); ctx.lineTo(s,-s); } if(i===1) { ctx.moveTo(s,-s); ctx.lineTo(s,s); } if(i===2) { ctx.moveTo(s,s); ctx.lineTo(-s,s); } if(i===3) { ctx.moveTo(-s,s); ctx.lineTo(-s,-s); } ctx.stroke();
+        });
         ctx.restore();
-        ctx.fillStyle="white"; ctx.font = "20px Arial"; ctx.fillText("❤️".repeat(dHealth), 20, 30);
-        
-        let best = localStorage.getItem('defense_best') || 0;
-        if(dDefScore > parseInt(best)) { localStorage.setItem('defense_best', dDefScore); document.getElementById('best').innerText = dDefScore; }
-
+        ctx.fillStyle = "white"; ctx.font = "18px Arial"; ctx.fillText("生命: " + "❤️".repeat(dHealth), 20, 40);
         mainLoop = requestAnimationFrame(defenseLoop);
     }
 
-    // --- 一筆畫地牢 ---
-    let dgMap, dgPath, dgHP;
-    const DG_LEVEL = [0,1,0,0,0, 0,2,1,1,0, 0,0,0,2,0, 1,1,0,1,1, 2,0,0,0,3];
-    function initDungeon() {
-        dgMap = [...DG_LEVEL]; dgPath = [0]; dgHP = 100;
-        document.getElementById('best').innerText = localStorage.getItem('dungeon_best') || 0;
-        updateDungeonUI();
+    // ==========================================
+    // 一筆畫地牢
+    // ==========================================
+    let pGrid = [], pPath = [], pHP = 5, pIsDragging = false;
+    function initPathfinder() {
+        pGrid = []; pPath = []; pHP = 5;
+        for(let i=0; i<25; i++) {
+            let type = "empty"; let rand = Math.random();
+            if(rand < 0.2) type = "monster"; else if(rand < 0.1) type = "heal";
+            pGrid.push({type});
+        }
+        pGrid[0].type = "start"; pGrid[24].type = "exit";
+        drawPathfinder();
     }
-    function updateDungeonUI() {
-        const board = document.getElementById('dungeon-board'); board.innerHTML = '';
-        dgMap.forEach((type, i) => {
-            const cell = document.createElement('div'); cell.className = 'dg-cell';
-            const isVisited = dgPath.includes(i), isCurrent = dgPath[dgPath.length-1] === i;
-            if (isVisited) cell.classList.add('visited');
-            if (isCurrent) cell.classList.add('current');
-            if (type === 3) cell.classList.add('exit');
-            if (isCurrent) cell.innerHTML = '👤';
-            else if (type === 1 && !isVisited) cell.innerHTML = '👾';
-            else if (type === 2 && !isVisited) cell.innerHTML = '🧪';
-            else if (type === 3) cell.innerHTML = '🏁';
-            cell.onclick = () => moveDungeon(i);
-            board.appendChild(cell);
-        });
-        document.getElementById('dg-hp').innerText = dgHP;
-        document.getElementById('hp-bar').value = dgHP;
-        document.getElementById('score').innerText = dgPath.length;
-    }
-    function moveDungeon(target) {
-        if (!gameActive) return;
-        const cur = dgPath[dgPath.length-1];
-        if (dgPath.length > 1 && target === dgPath[dgPath.length-2]) { undoDungeon(); return; }
-        const r1 = Math.floor(cur/5), c1 = cur%5, r2 = Math.floor(target/5), c2 = target%5;
-        if (Math.abs(r1-r2)+Math.abs(c1-c2) === 1 && !dgPath.includes(target)) {
-            if (dgMap[target] === 1) dgHP -= 25;
-            if (dgMap[target] === 2) dgHP = Math.min(100, dgHP + 20);
-            dgPath.push(target);
-            if (dgHP <= 0) openModal("冒險失敗", "生命值耗盡");
-            else if (dgMap[target] === 3) {
-                let score = Math.round(dgPath.length/25*100);
-                let best = localStorage.getItem('dungeon_best') || 0;
-                if(score > parseInt(best)) { localStorage.setItem('dungeon_best', score); document.getElementById('best').innerText = score; }
-                openModal("成功逃脫", "探索率：" + score + "%");
+    function drawPathfinder() {
+        const cvs = document.getElementById('pathfinderCanvas'); const ctx = cvs.getContext('2d');
+        ctx.fillStyle = "#131314"; ctx.fillRect(0,0,400,450);
+        const cS = 70; const off = 25;
+        for(let i=0; i<25; i++) {
+            let x = (i%5)*cS + off; let y = Math.floor(i/5)*cS + off;
+            ctx.strokeStyle = "#444"; ctx.strokeRect(x,y,cS,cS);
+            ctx.font = "20px Arial"; ctx.textAlign="center";
+            if(pGrid[i].type === "monster") ctx.fillText("👾", x+35, y+45);
+            if(pGrid[i].type === "heal") ctx.fillText("🧪", x+35, y+45);
+            if(pGrid[i].type === "start") ctx.fillText("🏠", x+35, y+45);
+            if(pGrid[i].type === "exit") ctx.fillText("💎", x+35, y+45);
+            if(pPath.includes(i)) { ctx.fillStyle = "rgba(138, 180, 248, 0.3)"; ctx.fillRect(x+5, y+5, cS-10, cS-10); }
+        }
+        if(pPath.length > 1) {
+            ctx.beginPath(); ctx.strokeStyle = "#8ab4f8"; ctx.lineWidth = 4;
+            for(let j=0; j<pPath.length; j++) {
+                let idx = pPath[j]; let lx = (idx%5)*cS+off+35; let ly = Math.floor(idx/5)*cS+off+35;
+                if(j===0) ctx.moveTo(lx, ly); else ctx.lineTo(lx, ly);
             }
-            updateDungeonUI();
+            ctx.stroke();
         }
+        ctx.fillStyle = "white"; ctx.textAlign="left"; ctx.fillText("HP: " + "❤️".repeat(pHP), 25, 420);
     }
-    function undoDungeon() { if (dgPath.length > 1) { dgPath.pop(); updateDungeonUI(); } }
+    document.getElementById('pathfinderCanvas').addEventListener('mousedown', (e) => {
+        const rect = e.target.getBoundingClientRect(); const x = e.clientX-rect.left-25; const y = e.clientY-rect.top-25;
+        const col = Math.floor(x/70); const row = Math.floor(y/70); const idx = row*5+col;
+        if(idx === 0) { pIsDragging = true; pPath = [0]; pHP = 5; drawPathfinder(); }
+    });
+    document.getElementById('pathfinderCanvas').addEventListener('mousemove', (e) => {
+        if(!pIsDragging) return;
+        const rect = e.target.getBoundingClientRect(); const x = e.clientX-rect.left-25; const y = e.clientY-rect.top-25;
+        const col = Math.floor(x/70); const row = Math.floor(y/70); if(col<0||col>4||row<0||row>4) return;
+        const idx = row*5+col; const lastIdx = pPath[pPath.length-1];
+        if(idx !== lastIdx && !pPath.includes(idx)) {
+            if(Math.abs(col-(lastIdx%5)) + Math.abs(row-Math.floor(lastIdx/5)) === 1) {
+                pPath.push(idx); if(pGrid[idx].type==="monster") pHP--; if(pGrid[idx].type==="heal") pHP++;
+                if(pHP <= 0) { pIsDragging = false; openModal("冒險失敗", "血量歸零了！"); }
+                if(pGrid[idx].type === "exit") { pIsDragging = false; openModal("通關成功", "走過格數: " + pPath.length); }
+                drawPathfinder();
+            }
+        }
+    });
+    window.addEventListener('mouseup', () => pIsDragging = false);
 
-    // --- 全域事件 ---
+    // ==========================================
+    // 打磚塊
+    // ==========================================
+    let bBall, bPad, bBricks = [];
+    function initBricks() {
+        bBall = {x: 200, y: 400, dx: 3, dy: -3, r: 8}; bPad = {x: 150, w: 100, h: 10}; bBricks = [];
+        for(let r=0; r<5; r++) for(let c=0; c<6; c++) bBricks.push({x: c*60+25, y: r*25+50, w: 50, h: 20, alive: true});
+        gameActive = true; bricksLoop();
+    }
+    function bricksLoop() {
+        if(currentGame !== 'bricks' || !gameActive) return;
+        const cvs = document.getElementById('bricksCanvas'); const ctx = cvs.getContext('2d');
+        ctx.fillStyle = "black"; ctx.fillRect(0,0,400,500);
+        bBall.x += bBall.dx; bBall.y += bBall.dy;
+        if(bBall.x<0 || bBall.x>400) bBall.dx *= -1; if(bBall.y<0) bBall.dy *= -1;
+        if(bBall.y > 470 && bBall.x > bPad.x && bBall.x < bPad.x + bPad.w) bBall.dy *= -1.05;
+        if(bBall.y > 500) { gameActive = false; openModal("Game Over", "失敗！"); return; }
+        bBricks.forEach(b => { if(b.alive && bBall.x>b.x && bBall.x<b.x+b.w && bBall.y>b.y && bBall.y<b.y+b.h) { b.alive=false; bBall.dy*=-1; } });
+        ctx.fillStyle = "#8ab4f8"; ctx.fillRect(bPad.x, 480, bPad.w, bPad.h);
+        ctx.beginPath(); ctx.arc(bBall.x, bBall.y, bBall.r, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill();
+        bBricks.forEach(b => { if(b.alive) { ctx.fillStyle = "hsl("+b.y+", 70%, 60%)"; ctx.fillRect(b.x, b.y, b.w, b.h); } });
+        mainLoop = requestAnimationFrame(bricksLoop);
+    }
+    document.getElementById('bricksCanvas').addEventListener('mousemove', (e) => {
+        const rect = e.target.getBoundingClientRect(); bPad.x = e.clientX - rect.left - bPad.w/2;
+    });
+
+    // ==========================================
+    // 修復後的全域按鍵監聽 (2048 修復核心)
+    // ==========================================
     window.addEventListener('keydown', e => {
-        const k = e.code;
-        if (currentGame === "2048") {
-            if(k.includes('Left') || k==='KeyA') move2048('left');
-            if(k.includes('Right') || k==='KeyD') move2048('right');
-            if(k.includes('Up') || k==='KeyW') move2048('up');
-            if(k.includes('Down') || k==='KeyS') move2048('down');
-        } else if (currentGame === "snake") {
-            if((k.includes('Up')||k==='KeyW') && dy===0) {dx=0; dy=-10;}
-            if((k.includes('Down')||k==='KeyS') && dy===0) {dx=0; dy=10;}
-            if((k.includes('Left')||k==='KeyA') && dx===0) {dx=-10; dy=0;}
-            if((k.includes('Right')||k==='KeyD') && dx===0) {dx=10; dy=0;}
-        } else if (currentGame === "magnet" && (k==='Space' || k.includes('Up'))) {
-            mDirection *= -1;
-        } else if (currentGame === "defense") {
-            if(k.includes('Left') || k==='KeyA') dRot -= 90;
-            if(k.includes('Right') || k==='KeyD') dRot += 90;
+        // 防止網頁在玩遊戲時跟著捲動
+        if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+
+        if(currentGame === "2048") {
+            if(e.key === "ArrowLeft" || e.key === "a" || e.key === "A") move2048('left');
+            if(e.key === "ArrowRight" || e.key === "d" || e.key === "D") move2048('right');
+            if(e.key === "ArrowUp" || e.key === "w" || e.key === "W") move2048('up');
+            if(e.key === "ArrowDown" || e.key === "s" || e.key === "S") move2048('down');
+        }
+        if(currentGame === "snake") {
+            if((e.key==='ArrowUp'||e.key==='w') && dy===0){dx=0;dy=-10;}
+            if((e.key==='ArrowDown'||e.key==='s') && dy===0){dx=0;dy=10;}
+            if((e.key==='ArrowLeft'||e.key==='a') && dx===0){dx=-10;dy=0;}
+            if((e.key==='ArrowRight'||e.key==='d') && dx===0){dx=10;dy=0;}
+        }
+        if(currentGame === "magnet" && e.key === " ") mDirection *= -1;
+        if(currentGame === "defense") {
+            if(e.key === "ArrowLeft" || e.key === "a") dRot -= 90;
+            if(e.key === "ArrowRight" || e.key === "d") dRot += 90;
         }
     });
-
-    window.addEventListener('mousemove', e => {
-        if(currentGame === 'breakout' && gameActive) {
-            const rect = document.getElementById('breakoutCanvas').getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
-            bPaddle.x = Math.max(0, Math.min(400 - bPaddle.w, mouseX - bPaddle.w/2));
-        }
-    });
-
-    document.getElementById('magnetCanvas').onmousedown = () => { if(currentGame==='magnet') mDirection*=-1; };
 </script>
 </body>
 </html>
